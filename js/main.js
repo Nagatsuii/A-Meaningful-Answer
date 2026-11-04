@@ -39,7 +39,8 @@
     pulses: [],
     nextAmbient: 1,   // when the next quiet resting pulse sets off
     ambientForward: false,
-    labelAlpha: 0     // how visible the 0/1 labels under the bits are
+    labelAlpha: 0,    // how visible the 0/1 labels under the bits are
+    starScale: 1      // stars shrink a little when packed tightly (phones with many bits)
   };
 
   // Timers for the oscillators (automatic flipping).
@@ -67,17 +68,33 @@
     return { x: 0, y: 0, shown: on, pending: on, brightness: on ? 1 : CONFIG.offBrightness };
   }
 
-  // Where star `index` should sit: bits in a row across the middle of the sky,
-  // bit 0 (the "ones" place) on the right, the way binary numbers are written.
+  // The gap between neighbouring bits: the full spacing on wide screens, tighter on narrow ones.
+  function spacing() {
+    const n = view.stars.length;
+    if (n < 2) return CONFIG.bitSpacing;
+    const skyWidth = view.cx * 2;
+    const share = n > 2 ? 0.8 : 0.7; // a bigger constellation may use more of the width
+    return Math.min(CONFIG.bitSpacing, (skyWidth * share) / (n - 1));
+  }
+
+  // Where star `index` should sit. Bits run right to left like a written binary number
+  // (bit 0, the "ones" place, on the right), each nudged up or down by CONFIG.constellationShape.
   function starTarget(index) {
     const n = view.stars.length;
-    const skyWidth = view.cx * 2;
-    const spacing = n > 1 ? Math.min(CONFIG.bitSpacing, (skyWidth * 0.7) / (n - 1)) : 0;
-    return { x: view.cx + ((n - 1) / 2 - index) * spacing, y: view.cy };
+    const gap = spacing();
+    const nudge = CONFIG.constellationShape[index] || 0;
+    // Centre the shape vertically too, so the whole constellation sits in the middle of the sky.
+    const shape = CONFIG.constellationShape.slice(0, n);
+    const middle = (Math.min(...shape) + Math.max(...shape)) / 2;
+    return {
+      x: view.cx + ((n - 1) / 2 - index) * gap,
+      y: view.cy + (nudge - middle) * gap
+    };
   }
 
   // Move every star toward its spot. amount = 1 jumps straight there.
   function placeStars(amount) {
+    view.starScale = Math.max(0.6, Math.min(1, spacing() / CONFIG.starScaleAt));
     view.stars.forEach((star, i) => {
       const t = starTarget(i);
       star.x += (t.x - star.x) * amount;
@@ -171,13 +188,7 @@
   function buy(id) {
     if (!ready() || !Upgrades.buy(state, id)) return;
     if (id === 'secondBit') {
-      // A new bit is born on the left. The first bit glides aside to make room.
-      view.stars.push(makeStar(view.stars.length));
-      const index = view.stars.length - 1;
-      const spot = starTarget(index);
-      view.stars[index].x = spot.x;
-      view.stars[index].y = spot.y;
-      view.birth = { index: index, start: view.time, ignited: false };
+      addBit();
     } else {
       Render.ripple(view, 0, 0.3, 80); // the bit glows a little wider when it gains something new
     }
@@ -185,14 +196,43 @@
     Save.save(state);
   }
 
+  // A new bit is born on the left of the others, and they glide aside to make room.
+  function addBit() {
+    view.stars.push(makeStar(view.stars.length));
+    const index = view.stars.length - 1;
+    const spot = starTarget(index);
+    view.stars[index].x = spot.x;
+    view.stars[index].y = spot.y;
+    view.birth = { index: index, start: view.time, ignited: false };
+  }
+
+  // Bits 3 to 7 join by themselves once enough bits have been earned (see CONFIG.joinAt).
+  // Only one is born at a time; if several are due (say, after a long time away) they arrive one by one.
+  function checkForNewBits() {
+    if (!ready()) return;
+    if (Upgrades.bitCount(state) < Upgrades.bitsEarned(state)) {
+      state.joinedBits = (state.joinedBits || 0) + 1;
+      addBit();
+      Save.save(state);
+    }
+  }
+
+  const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
+
   // Called when a birth animation ends.
   function birthFinished(index) {
     view.birth = null;
-    if (index === 1) {
+    const n = index + 1; // how many bits there are now
+    if (n === 2) {
       // "\n" starts a new line; "\u00a0" is a space that never breaks, so the four states stay together.
       UI.showNote('Two bits.\nFour possible states:\n00\u00a0·\u00a001\u00a0·\u00a010\u00a0·\u00a011', 10);
-      view.nextAmbient = view.time + 0.6; // the first resting pulse follows straight after
+    } else if (n > 2) {
+      // e.g. "Three bits. 8 possible states: 000 to 111"
+      const states = Math.pow(2, n);
+      UI.showNote(`${NUMBER_WORDS[n] || n} bits.\n${states} possible states:\n` +
+        `${'0'.repeat(n)}\u00a0to\u00a0${'1'.repeat(n)}`, 10);
     }
+    if (n >= 2) view.nextAmbient = view.time + 0.6; // a resting pulse follows straight after
     UI.refresh(state, true);
   }
 
@@ -241,17 +281,25 @@
 
   // ---------- input ----------
 
-  // Is the point (x, y) close enough to the bits to count as tapping them?
-  // Anywhere near the row of bits counts, including the thread between them.
-  function isOnBits(x, y) {
-    const reach = Math.max(CONFIG.tapRadiusMin, Math.min(view.width, view.height) * CONFIG.tapRadiusScreenShare);
-    const a = view.stars[0];
-    const b = view.stars[view.stars.length - 1];
+  // How far is point (x, y) from the straight line between stars a and b?
+  function distanceToThread(x, y, a, b) {
     // Find the closest point on the line from a to b, then measure the distance to it.
     const lx = b.x - a.x, ly = b.y - a.y;
     const length2 = lx * lx + ly * ly;
     const t = length2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * lx + (y - a.y) * ly) / length2)) : 0;
-    return Math.hypot(x - (a.x + lx * t), y - (a.y + ly * t)) <= reach;
+    return Math.hypot(x - (a.x + lx * t), y - (a.y + ly * t));
+  }
+
+  // Is the point (x, y) close enough to the bits to count as tapping them?
+  // Anywhere near any star, or the threads between them, counts.
+  function isOnBits(x, y) {
+    const reach = Math.max(CONFIG.tapRadiusMin, Math.min(view.width, view.height) * CONFIG.tapRadiusScreenShare);
+    const stars = view.stars;
+    if (stars.length === 1) return Math.hypot(x - stars[0].x, y - stars[0].y) <= reach;
+    for (let i = 0; i + 1 < stars.length; i++) {
+      if (distanceToThread(x, y, stars[i], stars[i + 1]) <= reach) return true;
+    }
+    return false;
   }
 
   // pointerdown covers mouse, touch and pen, and reacts instantly (no click delay on phones).
@@ -316,6 +364,7 @@
     state.lastSeen = clock;
 
     runOscillators(dt);
+    checkForNewBits();
 
     // Refresh the counter and menu a few times a second (often enough to look live, cheap on phones).
     uiTimer += dt;

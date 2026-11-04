@@ -44,7 +44,18 @@ const Upgrades = {
 
   // How many bits are in the sky.
   bitCount(state) {
-    return 1 + this.owned(state, 'secondBit');
+    return 1 + this.owned(state, 'secondBit') + (state.joinedBits || 0);
+  },
+
+  // How many bits *should* be in the sky by now? The 3rd bit onward joins by itself
+  // when lifetime bits pass each total in CONFIG.joinAt (but only after you own the second bit).
+  bitsEarned(state) {
+    let n = 1 + this.owned(state, 'secondBit');
+    if (n < 2) return n;
+    for (const total of CONFIG.joinAt) {
+      if (state.lifetimeBits >= total) n++;
+    }
+    return n;
   },
 
   // Counting up in binary, how many bits flip per step on average?

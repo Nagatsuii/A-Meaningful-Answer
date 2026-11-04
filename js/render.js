@@ -83,14 +83,15 @@ const Render = (function () {
   // Send a pulse of light along the thread from one star to its neighbour.
   // `value` is what the receiving bit becomes when the pulse arrives (0 or 1),
   // or null for a resting pulse that changes nothing. `delay` lets carries chain one after another.
-  function sendPulse(view, from, to, value, delay) {
+  // `duration` is optional; carries use CONFIG.carryPulseSeconds.
+  function sendPulse(view, from, to, value, delay, duration) {
     const carry = value !== null;
     view.pulses.push({
       from: from,
       to: to,
       value: value,
       start: view.time + (delay || 0),
-      duration: carry ? CONFIG.carryPulseSeconds : CONFIG.ambientPulseTravel,
+      duration: duration || CONFIG.carryPulseSeconds,
       colour: carry ? COLOUR_CARRY : COLOUR_AMBIENT,
       strength: carry ? 0.9 : 0.35
     });
@@ -138,8 +139,14 @@ const Render = (function () {
     if (resting && view.time >= view.nextAmbient) {
       view.nextAmbient = view.time + CONFIG.ambientPulseSeconds;
       view.ambientForward = !view.ambientForward;
-      const a = 0, b = view.stars.length - 1;
-      sendPulse(view, view.ambientForward ? a : b, view.ambientForward ? b : a, null, 0);
+      // The pulse hops along the threads from star to star, pausing softly at each one.
+      const last = view.stars.length - 1;
+      const hop = CONFIG.ambientPulseTravel / last;
+      for (let k = 0; k < last; k++) {
+        const from = view.ambientForward ? k : last - k;
+        const to = view.ambientForward ? k + 1 : last - k - 1;
+        sendPulse(view, from, to, null, k * hop, hop);
+      }
     }
 
     // The little 0/1 labels under the bits fade in once there's more than one bit.
@@ -175,8 +182,8 @@ const Render = (function () {
     const twinkle = calm ? 1 : 1 + 0.05 * Math.sin(view.time * 1.7 + seed) + 0.03 * Math.sin(view.time * 3.1 + seed);
     const b = brightness * twinkle * alpha;
 
-    const halo = CONFIG.bitHaloRadius * sizeBoost;
-    const core = CONFIG.bitCoreRadius * Math.sqrt(sizeBoost);
+    const halo = CONFIG.bitHaloRadius * sizeBoost * view.starScale;
+    const core = CONFIG.bitCoreRadius * Math.sqrt(sizeBoost) * Math.max(0.75, view.starScale);
 
     // Outer halo, then a tighter inner glow.
     glow(ctx, x, y, halo, colour, 0.32 * b);
@@ -264,15 +271,31 @@ const Render = (function () {
   }
 
   // The 0 or 1 under each bit, so you can read the binary number.
+  // With three or more bits, the whole number is also written out below, with its everyday value:
+  // e.g. "0101 = 5".
   function drawLabels(ctx, view) {
     if (view.labelAlpha < 0.01) return;
-    ctx.font = `13px ${FONT}`;
+    const below = CONFIG.bitHaloRadius * view.starScale + 8;
+    ctx.font = `${view.starScale < 0.8 ? 11 : 13}px ${FONT}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     for (const star of view.stars) {
       ctx.fillStyle = rgba(star.shown ? COLOUR_ON : COLOUR_OFF, 0.45 * view.labelAlpha);
-      ctx.fillText(star.shown ? '1' : '0', star.x, star.y + CONFIG.bitHaloRadius + 8);
+      ctx.fillText(star.shown ? '1' : '0', star.x, star.y + below);
     }
+
+    if (view.stars.length < 3) return;
+    let binary = '';
+    let value = 0;
+    for (let i = view.stars.length - 1; i >= 0; i--) {   // leftmost (biggest) bit first
+      binary += view.stars[i].shown ? '1' : '0';
+      value = value * 2 + view.stars[i].shown;
+    }
+    const lowest = Math.max(...view.stars.map(s => s.y));
+    const middle = view.stars.reduce((sum, s) => sum + s.x, 0) / view.stars.length;
+    ctx.font = `13px ${FONT}`;
+    ctx.fillStyle = rgba(COLOUR_HINT, 0.4 * view.labelAlpha);
+    ctx.fillText(`${binary} = ${value}`, middle, lowest + below + 34);
   }
 
   // The birth of a bit, in two parts: first a pinprick slowly gathering light,

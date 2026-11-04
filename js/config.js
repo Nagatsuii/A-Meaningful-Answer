@@ -67,7 +67,16 @@ const CONFIG = {
   bitSpacing: 110,             // distance between neighbouring bits, in screen pixels
   carryPulseSeconds: 0.45,     // how long a carry takes to travel from one bit to the next
   ambientPulseSeconds: 6,      // a slow, quiet pulse drifts between the bits this often
-  ambientPulseTravel: 2.6,     // ...and takes this long to cross
+  ambientPulseTravel: 2.6,     // ...and takes this long to travel the whole chain of bits
+
+  // --- The constellation (bits 3 to 7) ---
+  // Once you own the second bit, more bits join by themselves as your lifetime bits pass these totals.
+  // One number per bit: 3rd, 4th, 5th, 6th, 7th.
+  joinAt: [800, 2000, 4500, 9000, 16000],
+  // How far each bit sits above (-) or below (+) the middle line, as a share of the spacing.
+  // Bit 0 (the ones place, on the right) comes first. This is what makes a row into a constellation.
+  constellationShape: [0, 0, -0.55, -0.1, 0.45, 0.05, -0.5],
+  starScaleAt: 90,             // when bits are packed closer than this (on phones) the stars shrink to fit
 
   // --- Automatic flipping ---
   maxVisibleFlipsPerSecond: 2, // the star never blinks faster than this, however many oscillators you own
