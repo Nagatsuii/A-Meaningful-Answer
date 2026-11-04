@@ -12,6 +12,7 @@ const Save = {
       lifetimeBits: 0, // every bit ever earned, even ones spent; used to reveal upgrades
       upgrades: {},   // how many of each upgrade you own, e.g. { amplifier: 2 }
       joinedBits: 0,  // how many constellation bits (3rd onward) have joined by themselves
+      byteFormed: false, // have all eight bits come together as a byte?
       lastSeen: null  // the clock time (in milliseconds) the game was last running
     };
   },

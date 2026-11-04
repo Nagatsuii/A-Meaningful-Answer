@@ -135,7 +135,7 @@ const Render = (function () {
 
     // Once there are two or more bits, a quiet pulse drifts between them now and then,
     // back and forth: information always moving, even at rest.
-    const resting = view.stars.length >= 2 && view.birth === null;
+    const resting = view.stars.length >= 2 && view.birth === null && view.ceremony === null;
     if (resting && view.time >= view.nextAmbient) {
       view.nextAmbient = view.time + CONFIG.ambientPulseSeconds;
       view.ambientForward = !view.ambientForward;
@@ -270,6 +270,64 @@ const Render = (function () {
     }
   }
 
+  // A rounded outline (a capsule) drawn with straight lines and corner arcs.
+  function capsulePath(ctx, left, top, right, bottom, r) {
+    ctx.beginPath();
+    ctx.moveTo((left + right) / 2, top);         // start at the top middle...
+    ctx.arcTo(right, top, right, bottom, r);      // ...and go round clockwise
+    ctx.arcTo(right, bottom, left, bottom, r);
+    ctx.arcTo(left, bottom, left, top, r);
+    ctx.arcTo(left, top, right, top, r);
+    ctx.closePath();
+  }
+
+  // The byte: a capsule of light around all eight bits, showing they now work as one.
+  // While the byte is forming, the capsule draws itself in and a wave of light runs through the bits.
+  function drawByte(ctx, view, state) {
+    const c = view.ceremony;
+    if (!state.byteFormed && !c) return;
+    const t = c ? view.time - c.start : Infinity; // seconds into the ceremony (or long finished)
+    if (t < 0) return;
+
+    const stars = view.stars;
+    const gather = CONFIG.byteGatherSeconds;
+    const sweep = CONFIG.byteSweepSeconds;
+
+    // The capsule: from the leftmost star to the rightmost, with room for the 0/1 labels below.
+    const xs = stars.map(s => s.x);
+    const midY = stars.reduce((sum, s) => sum + s.y, 0) / stars.length;
+    const gap = stars.length > 1 ? Math.abs(stars[0].x - stars[1].x) : 40;
+    const halo = CONFIG.bitHaloRadius * view.starScale;
+    const left = Math.min(...xs) - gap * 0.55;
+    const right = Math.max(...xs) + gap * 0.55;
+    const top = midY - halo - 6;
+    const bottom = midY + halo + 26;
+    const r = Math.min((bottom - top) / 2, 26);
+
+    // How much of the outline is drawn (0 to 1), and how bright it is.
+    const draw = clamp01((t - gather * 0.45) / (gather * 0.55 + sweep * 0.4));
+    const settle = clamp01((t - gather - sweep) / 2); // after the wave, it calms down
+    const breath = 0.5 + 0.5 * Math.sin(view.time * 0.6);
+    const alpha = 0.36 - 0.2 * settle + 0.03 * breath;
+
+    const perimeter = 2 * (right - left - 2 * r) + 2 * (bottom - top - 2 * r) + 2 * Math.PI * r;
+    ctx.setLineDash([perimeter * draw, perimeter]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = rgba(COLOUR_ON, alpha);
+    capsulePath(ctx, left, top, right, bottom, r);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // The wave: each star glows brightly for a moment as it passes.
+    if (c) {
+      stars.forEach((s, i) => {
+        const d = (t - view.byteWaveTime(i, stars.length)) / 0.22;
+        const wave = Math.exp(-d * d);
+        glow(ctx, s.x, s.y, halo * 1.8, COLOUR_ON, 0.55 * wave);
+      });
+    }
+  }
+
   // The 0 or 1 under each bit, so you can read the binary number.
   // With three or more bits, the whole number is also written out below, with its everyday value:
   // e.g. "0101 = 5".
@@ -347,6 +405,7 @@ const Render = (function () {
       // Threads between bits that are fully alive (a newborn's thread is drawn by drawBirth).
       const living = view.birth ? view.birth.index : view.stars.length;
       for (let i = 0; i + 1 < living; i++) drawThread(ctx, view.stars[i], view.stars[i + 1], 1);
+      drawByte(ctx, view, state);
       drawPulses(ctx, view);
 
       // Living bits. For returning players they fade in over the first second.

@@ -71,12 +71,18 @@ const CONFIG = {
 
   // --- The constellation (bits 3 to 7) ---
   // Once you own the second bit, more bits join by themselves as your lifetime bits pass these totals.
-  // One number per bit: 3rd, 4th, 5th, 6th, 7th.
-  joinAt: [800, 2000, 4500, 9000, 16000],
+  // One number per bit: 3rd, 4th, 5th, 6th, 7th, and the 8th, which completes the byte.
+  joinAt: [800, 2000, 4500, 9000, 16000, 28000],
   // How far each bit sits above (-) or below (+) the middle line, as a share of the spacing.
   // Bit 0 (the ones place, on the right) comes first. This is what makes a row into a constellation.
-  constellationShape: [0, 0, -0.55, -0.1, 0.45, 0.05, -0.5],
+  constellationShape: [0, 0, -0.55, -0.1, 0.45, 0.05, -0.5, 0.3],
   starScaleAt: 90,             // when bits are packed closer than this (on phones) the stars shrink to fit
+
+  // --- The byte forming (when the 8th bit has joined) ---
+  byteDelaySeconds: 0.8,       // a quiet pause after the 8th bit is born
+  byteGatherSeconds: 2.6,      // the constellation straightens into a row and is enclosed
+  byteSweepSeconds: 1.8,       // a wave of light runs through all eight bits
+  byteRestSeconds: 2,          // a moment of stillness before play continues
 
   // --- Automatic flipping ---
   maxVisibleFlipsPerSecond: 2, // the star never blinks faster than this, however many oscillators you own

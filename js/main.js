@@ -40,7 +40,9 @@
     nextAmbient: 1,   // when the next quiet resting pulse sets off
     ambientForward: false,
     labelAlpha: 0,    // how visible the 0/1 labels under the bits are
-    starScale: 1      // stars shrink a little when packed tightly (phones with many bits)
+    starScale: 1,     // stars shrink a little when packed tightly (phones with many bits)
+    shapeFactor: state.byteFormed ? 0 : 1, // 1 = wandering constellation, 0 = the straight row of a byte
+    ceremony: null    // { start, swept, noted } while the byte is forming
   };
 
   // Timers for the oscillators (automatic flipping).
@@ -51,7 +53,7 @@
 
   // Is the sky ready for play (first bit born, nothing being born right now)?
   function ready() {
-    return state.sparked && view.birth === null;
+    return state.sparked && view.birth === null && view.ceremony === null;
   }
 
   // ---------- the stars (one per bit) ----------
@@ -82,10 +84,11 @@
   function starTarget(index) {
     const n = view.stars.length;
     const gap = spacing();
-    const nudge = CONFIG.constellationShape[index] || 0;
+    // shapeFactor flattens the shape into a straight row when the byte forms.
+    const nudge = (CONFIG.constellationShape[index] || 0) * view.shapeFactor;
     // Centre the shape vertically too, so the whole constellation sits in the middle of the sky.
     const shape = CONFIG.constellationShape.slice(0, n);
-    const middle = (Math.min(...shape) + Math.max(...shape)) / 2;
+    const middle = (Math.min(...shape) + Math.max(...shape)) / 2 * view.shapeFactor;
     return {
       x: view.cx + ((n - 1) / 2 - index) * gap,
       y: view.cy + (nudge - middle) * gap
@@ -214,7 +217,54 @@
       state.joinedBits = (state.joinedBits || 0) + 1;
       addBit();
       Save.save(state);
+    } else if (Upgrades.bitCount(state) >= 8 && !state.byteFormed) {
+      // All eight bits are here: the byte forms.
+      view.ceremony = { start: view.time + CONFIG.byteDelaySeconds, swept: [], noted: false };
     }
+  }
+
+  // The byte forming, step by step. Times are seconds since the ceremony began.
+  //   gather: the constellation straightens into a row, and a capsule of light draws around it
+  //   sweep:  a wave of light runs through the bits, left to right, each one rippling as it passes
+  //   rest:   the note appears, then play carries on
+  function runCeremony() {
+    const c = view.ceremony;
+    if (!c) return;
+    const t = view.time - c.start;
+    if (t < 0) return;
+
+    const gather = CONFIG.byteGatherSeconds;
+    const sweep = CONFIG.byteSweepSeconds;
+    const k = Math.min(1, t / gather);
+    view.shapeFactor = 1 - k * k * (3 - 2 * k); // smooth start and stop
+
+    // Ripple each bit as the wave passes it (the same timing render.js uses for the glow).
+    const n = view.stars.length;
+    for (let i = 0; i < n; i++) {
+      if (!c.swept[i] && t >= byteWaveTime(i, n)) {
+        c.swept[i] = true;
+        Render.ripple(view, i, 0.18, 34);
+      }
+    }
+
+    if (!c.noted && t >= gather + sweep * 0.7) {
+      c.noted = true;
+      UI.showNote('One byte.\nEight bits, working as one.\n256\u00a0possibilities: 0\u00a0to\u00a0255', 12);
+    }
+
+    if (t >= gather + sweep + CONFIG.byteRestSeconds) {
+      view.ceremony = null;
+      view.shapeFactor = 0;
+      state.byteFormed = true;
+      view.nextAmbient = view.time + 0.5;
+      UI.refresh(state, true);
+      Save.save(state);
+    }
+  }
+
+  // When the wave of light reaches bit i: it starts at the leftmost (biggest) bit and runs right.
+  function byteWaveTime(i, n) {
+    return CONFIG.byteGatherSeconds * 0.85 + ((n - 1 - i) / (n - 1)) * CONFIG.byteSweepSeconds;
   }
 
   const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
@@ -223,7 +273,9 @@
   function birthFinished(index) {
     view.birth = null;
     const n = index + 1; // how many bits there are now
-    if (n === 2) {
+    if (n === 8) {
+      // No note here: the byte forming has its own (see runCeremony).
+    } else if (n === 2) {
       // "\n" starts a new line; "\u00a0" is a space that never breaks, so the four states stay together.
       UI.showNote('Two bits.\nFour possible states:\n00\u00a0·\u00a001\u00a0·\u00a010\u00a0·\u00a011', 10);
     } else if (n > 2) {
@@ -331,6 +383,8 @@
 
   // ---------- start up ----------
 
+  view.byteWaveTime = byteWaveTime; // shared with render.js so the glow and the ripples line up
+
   // One star per bit (before the first tap there's one, waiting to be born).
   for (let i = 0; i < Upgrades.bitCount(state); i++) view.stars.push(makeStar(i));
 
@@ -365,6 +419,7 @@
 
     runOscillators(dt);
     checkForNewBits();
+    runCeremony();
 
     // Refresh the counter and menu a few times a second (often enough to look live, cheap on phones).
     uiTimer += dt;
