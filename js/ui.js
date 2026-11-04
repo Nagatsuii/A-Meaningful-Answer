@@ -10,8 +10,8 @@ const UI = (function () {
   const countEl = document.getElementById('count');
   const unitEl = document.getElementById('unit');
   const rateEl = document.getElementById('rate');
-  const awayEl = document.getElementById('away');
-  let awayTimer = null;
+  const noteEl = document.getElementById('note');
+  let noteTimer = null;
 
   const buttons = {}; // one button per upgrade, found by id
 
@@ -94,16 +94,21 @@ const UI = (function () {
     return `${Math.floor(seconds)}\u00a0sec`;
   }
 
+  // Show a short note under the counter for a few seconds.
+  function showNote(text, seconds) {
+    noteEl.textContent = text;
+    noteEl.classList.add('show');
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => noteEl.classList.remove('show'), seconds * 1000);
+  }
+
   // Briefly show what the oscillators earned while the player was gone.
   function showAway(seconds, bits, capped) {
     let text = `Welcome back. While you were away (${formatDuration(seconds)}), ` +
       `your oscillators kept flipping: +${bits.toLocaleString()} bits.`;
     if (capped) text += ` They rest after ${CONFIG.offlineMaxHours} hours.`;
-    awayEl.textContent = text;
-    awayEl.classList.add('show');
-    clearTimeout(awayTimer);
-    awayTimer = setTimeout(() => awayEl.classList.remove('show'), CONFIG.offlineMessageSeconds * 1000);
+    showNote(text, CONFIG.offlineMessageSeconds);
   }
 
-  return { build, refresh, skyCentre, showAway };
+  return { build, refresh, skyCentre, showNote, showAway };
 })();

@@ -3,7 +3,7 @@
 
 const Upgrades = {
   // The order upgrades are listed in the menu.
-  ids: ['amplifier', 'oscillator'],
+  ids: ['amplifier', 'oscillator', 'secondBit'],
 
   // How many of this upgrade the player owns.
   owned(state, id) {
@@ -16,12 +16,19 @@ const Upgrades = {
     return Math.ceil(u.baseCost * Math.pow(u.costGrowth, this.owned(state, id)));
   },
 
-  canAfford(state, id) {
-    return state.bits >= this.cost(state, id);
+  // Some upgrades (like the second bit) can only be bought a set number of times.
+  isMaxed(state, id) {
+    const max = CONFIG.upgrades[id].maxOwned;
+    return max !== undefined && this.owned(state, id) >= max;
   },
 
-  // Should this upgrade show in the menu yet?
+  canAfford(state, id) {
+    return !this.isMaxed(state, id) && state.bits >= this.cost(state, id);
+  },
+
+  // Should this upgrade show in the menu? (Once-only upgrades disappear after you buy them.)
   isRevealed(state, id) {
+    if (this.isMaxed(state, id)) return false;
     return this.owned(state, id) > 0 || state.lifetimeBits >= CONFIG.upgrades[id].revealAt;
   },
 
@@ -35,18 +42,29 @@ const Upgrades = {
 
   // ---------- what upgrades add up to ----------
 
-  // Bits earned by one tap.
+  // How many bits are in the sky.
+  bitCount(state) {
+    return 1 + this.owned(state, 'secondBit');
+  },
+
+  // Counting up in binary, how many bits flip per step on average?
+  // With 1 bit it's always 1. With 2 bits: 1, 2, 1, 2... so 1.5. (The pattern is 2 - 2^(1 - bits).)
+  averageFlipsPerStep(state) {
+    return 2 - Math.pow(2, 1 - this.bitCount(state));
+  },
+
+  // Bits earned for each bit a tap flips.
   bitsPerTap(state) {
     return CONFIG.bitsPerTap + this.owned(state, 'amplifier') * CONFIG.upgrades.amplifier.bitsPerTapEach;
   },
 
-  // How many times per second the oscillators flip the bit.
+  // How many times per second the oscillators step the counter forward.
   flipsPerSecond(state) {
     return this.owned(state, 'oscillator') * CONFIG.upgrades.oscillator.flipsPerSecondEach;
   },
 
   // Bits per second earned without tapping.
   bitsPerSecond(state) {
-    return this.flipsPerSecond(state) * CONFIG.upgrades.oscillator.bitsPerFlip;
+    return this.flipsPerSecond(state) * this.averageFlipsPerStep(state) * CONFIG.upgrades.oscillator.bitsPerFlip;
   }
 };

@@ -58,20 +58,21 @@ body {
   min-height: 1em;
 }
 
-/* The "while you were away" note: fades in, rests a moment, fades out. */
-#away {
+/* Short notes under the counter: fade in, rest a moment, fade out. */
+#note {
   max-width: 300px;
   margin: 14px auto 0;
   padding: 0 16px;
   font-size: 12px;
   line-height: 1.6;
   letter-spacing: 0.04em;
+  white-space: pre-line;       /* lets a note use line breaks */
   color: rgba(255, 236, 205, 0.85);
   opacity: 0;
   transition: opacity 1.5s ease;
 }
 
-#away.show {
+#note.show {
   opacity: 1;
 }
 
@@ -263,7 +264,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   #counter,
   #panel,
-  #away {
+  #note {
     transition: none;
   }
 }

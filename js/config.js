@@ -3,7 +3,7 @@
 
 const CONFIG = {
   // --- Economy ---
-  bitsPerTap: 1,             // bits added to the counter each time you toggle the bit
+  bitsPerTap: 1,             // bits earned for each bit your tap flips (a carry can flip more than one)
 
   // --- Saving ---
   saveKey: 'a-meaningful-answer-save-v1', // name of the save slot in the browser's localStorage
@@ -33,7 +33,7 @@ const CONFIG = {
   upgrades: {
     amplifier: {
       name: 'Amplifier',
-      effect: '+1 bit per tap',
+      effect: '+1 bit for every flip you make',
       lesson: 'An amplifier makes a weak signal stronger.',
       baseCost: 10,
       costGrowth: 1.6,
@@ -48,9 +48,26 @@ const CONFIG = {
       costGrowth: 1.5,
       revealAt: 12,
       flipsPerSecondEach: 0.5, // each oscillator flips the bit once every 2 seconds
-      bitsPerFlip: 1           // bits earned per automatic flip
+      bitsPerFlip: 1           // bits earned for each bit an automatic tick flips
+    },
+    secondBit: {
+      name: 'Second Bit',
+      effect: 'a second bit joins the first',
+      lesson: 'Two bits can hold four states: 00, 01, 10, 11. Each bit you add doubles what can be stored.',
+      baseCost: 250,
+      costGrowth: 1,
+      revealAt: 150,
+      maxOwned: 1              // you can only buy this once
     }
   },
+
+  // --- Bits side by side ---
+  // Bits count together in binary. When the rightmost bit rolls over from 1 to 0,
+  // a "carry" pulse travels to its neighbour and flips it, just like a real counter.
+  bitSpacing: 110,             // distance between neighbouring bits, in screen pixels
+  carryPulseSeconds: 0.45,     // how long a carry takes to travel from one bit to the next
+  ambientPulseSeconds: 6,      // a slow, quiet pulse drifts between the bits this often
+  ambientPulseTravel: 2.6,     // ...and takes this long to cross
 
   // --- Automatic flipping ---
   maxVisibleFlipsPerSecond: 2, // the star never blinks faster than this, however many oscillators you own
