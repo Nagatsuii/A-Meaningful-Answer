@@ -25,5 +25,34 @@ const CONFIG = {
 
   // --- Tapping ---
   tapRadiusMin: 64,          // you can tap this many pixels from the bit and still hit it
-  tapRadiusScreenShare: 0.16 // ...or this share of the screen's short side, whichever is bigger
+  tapRadiusScreenShare: 0.16, // ...or this share of the screen's short side, whichever is bigger
+
+  // --- Upgrades ---
+  // cost of the next one = baseCost × costGrowth ^ (how many you already own), rounded up.
+  // revealAt: the upgrade appears in the menu once you've earned this many bits in total.
+  upgrades: {
+    amplifier: {
+      name: 'Amplifier',
+      effect: '+1 bit per tap',
+      lesson: 'An amplifier makes a weak signal stronger.',
+      baseCost: 10,
+      costGrowth: 1.6,
+      revealAt: 5,
+      bitsPerTapEach: 1      // extra bits per tap, for each amplifier owned
+    },
+    oscillator: {
+      name: 'Oscillator',
+      effect: 'flips the bit on its own',
+      lesson: 'A circuit that switches itself on and off: the heartbeat inside every computer.',
+      baseCost: 20,
+      costGrowth: 1.5,
+      revealAt: 12,
+      flipsPerSecondEach: 0.5, // each oscillator flips the bit once every 2 seconds
+      bitsPerFlip: 1           // bits earned per automatic flip
+    }
+  },
+
+  // --- Automatic flipping ---
+  maxVisibleFlipsPerSecond: 2, // the star never blinks faster than this, however many oscillators you own
+  autoSaveSeconds: 5           // how often the game saves while oscillators are earning bits
 };

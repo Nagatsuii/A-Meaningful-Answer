@@ -3,9 +3,6 @@
 (function () {
   const canvas = document.getElementById('sky');
   const ctx = canvas.getContext('2d');
-  const counterEl = document.getElementById('counter');
-  const countEl = document.getElementById('count');
-  const unitEl = document.getElementById('unit');
 
   // Adding ?reset to the address wipes the save, handy while testing.
   if (new URLSearchParams(location.search).has('reset')) {
@@ -15,12 +12,14 @@
 
   // `state` is the game itself, and gets saved.
   const state = Save.load();
+  // Saves from before upgrades existed didn't track lifetime bits, so start them from the current count.
+  state.lifetimeBits = Math.max(state.lifetimeBits, state.bits);
 
   // `view` is only about drawing (sizes, timers, sparks) and is never saved.
   const view = {
     width: 0,
     height: 0,
-    cx: 0,            // centre of the screen, where the bit lives
+    cx: 0,            // where the bit is drawn; it glides to make room for the menu
     cy: 0,
     time: 0,          // seconds since the page opened
     birthStart: null, // when the birth animation began, or null if it isn't playing
@@ -29,6 +28,17 @@
     particles: [],
     ripples: []
   };
+
+  // Timers for the oscillators (automatic flipping).
+  let flipProgress = 0;     // builds up to 1, then one automatic flip happens
+  let lastVisibleFlip = 0;  // when the star last visibly blinked from an automatic flip
+  let saveTimer = 0;
+  let uiTimer = 0;
+
+  // Is the first bit alive and finished being born?
+  function bitIsAlive() {
+    return state.sparked && view.birthStart === null;
+  }
 
   // ---------- screen size ----------
 
@@ -41,24 +51,17 @@
     canvas.width = Math.round(view.width * dpr);
     canvas.height = Math.round(view.height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // so we can keep thinking in normal screen pixels
-    view.cx = view.width / 2;
-    view.cy = view.height / 2;
-  }
-  window.addEventListener('resize', resize);
-  resize();
-
-  // ---------- the counter ----------
-
-  function showCounter() {
-    countEl.textContent = state.bits.toLocaleString();
-    unitEl.textContent = state.bits === 1 ? 'bit' : 'bits';
-    counterEl.classList.add('visible');
+    const centre = UI.skyCentre(view.width, view.height);
+    view.cx = centre.x;
+    view.cy = centre.y;
   }
 
-  // A returning player already has a bit, so show the counter straight away.
-  if (state.sparked) showCounter();
+  // ---------- earning bits ----------
 
-  // ---------- tapping ----------
+  function earn(amount) {
+    state.bits += amount;
+    state.lifetimeBits += amount;
+  }
 
   function tap() {
     // The very first tap: the bit is born. This tap doesn't add to the counter.
@@ -73,15 +76,43 @@
     }
 
     // Ignore taps while the bit is still being born.
-    if (view.birthStart !== null) return;
+    if (!bitIsAlive()) return;
 
     // Every tap after that: flip the bit between 0 and 1, and earn bits.
     state.bitOn = !state.bitOn;
-    state.bits += CONFIG.bitsPerTap;
+    earn(Upgrades.bitsPerTap(state));
     Render.ripple(view, 0.16, 46); // a soft, quiet ring
-    showCounter();
+    UI.refresh(state, true);
     Save.save(state);
   }
+
+  function buy(id) {
+    if (!Upgrades.buy(state, id)) return;
+    Render.ripple(view, 0.3, 80); // the bit glows a little wider when it gains something new
+    UI.refresh(state, true);
+    Save.save(state);
+  }
+
+  // Oscillators flip the bit by themselves. Bits are earned for every flip,
+  // but the star only visibly blinks a few times a second so it stays calm to watch.
+  function runOscillators(dt) {
+    const rate = Upgrades.flipsPerSecond(state);
+    if (rate <= 0 || !bitIsAlive()) return;
+
+    flipProgress += rate * dt;
+    const flips = Math.floor(flipProgress);
+    if (flips === 0) return;
+    flipProgress -= flips;
+    earn(flips * CONFIG.upgrades.oscillator.bitsPerFlip);
+
+    if (view.time - lastVisibleFlip >= 1 / CONFIG.maxVisibleFlipsPerSecond) {
+      lastVisibleFlip = view.time;
+      state.bitOn = !state.bitOn;
+      Render.ripple(view, 0.07, 34); // even quieter than a tap
+    }
+  }
+
+  // ---------- input ----------
 
   // Is the point (x, y) close enough to the bit to count as tapping it?
   function isOnBit(x, y) {
@@ -96,8 +127,10 @@
     if (isOnBit(event.clientX - rect.left, event.clientY - rect.top)) tap();
   });
 
-  // Space or Enter works too, for keyboard players.
+  // Space or Enter toggles too, for keyboard players.
+  // (Not when a menu button has focus, so Space/Enter can press that button instead.)
   window.addEventListener('keydown', function (event) {
+    if (event.target.closest && event.target.closest('button')) return;
     if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) {
       event.preventDefault();
       tap();
@@ -108,6 +141,13 @@
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') Save.save(state);
   });
+
+  // ---------- start up ----------
+
+  UI.build(buy);
+  UI.refresh(state, bitIsAlive());
+  window.addEventListener('resize', resize);
+  resize();
 
   // ---------- the loop ----------
 
@@ -122,8 +162,30 @@
     // When the birth animation finishes, the bit is fully alive and the counter appears.
     if (view.birthStart !== null && view.time - view.birthStart >= CONFIG.birthSeconds) {
       view.birthStart = null;
-      showCounter();
+      UI.refresh(state, true);
     }
+
+    runOscillators(dt);
+
+    // Refresh the counter and menu a few times a second (often enough to look live, cheap on phones).
+    uiTimer += dt;
+    if (uiTimer >= 0.2 && bitIsAlive()) {
+      uiTimer = 0;
+      UI.refresh(state, true);
+    }
+
+    // Save every few seconds while oscillators are earning.
+    saveTimer += dt;
+    if (saveTimer >= CONFIG.autoSaveSeconds) {
+      saveTimer = 0;
+      if (Upgrades.flipsPerSecond(state) > 0) Save.save(state);
+    }
+
+    // Glide the bit toward the middle of the open sky (it moves aside when the menu appears or slides up).
+    const centre = UI.skyCentre(view.width, view.height);
+    const glide = 1 - Math.exp(-4 * dt);
+    view.cx += (centre.x - view.cx) * glide;
+    view.cy += (centre.y - view.cy) * glide;
 
     Render.update(view, state, dt);
     Render.draw(ctx, view, state);

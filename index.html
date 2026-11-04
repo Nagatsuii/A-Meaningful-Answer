@@ -16,12 +16,27 @@
   <canvas id="sky" aria-label="A dark sky. Tap the faint glow in the middle."></canvas>
 
   <!-- The bit counter sits on top of the canvas as normal text, so it stays crisp -->
-  <div id="counter"><span id="count">0</span> <span id="unit">bits</span></div>
+  <div id="counter">
+    <div><span id="count">0</span> <span id="unit">bits</span></div>
+    <div id="rate"></div>
+  </div>
+
+  <!-- The upgrade menu. Hidden until the first upgrade is revealed.
+       Wide screens: a column on the right. Phones: a sheet that slides up from the bottom. -->
+  <aside id="panel" aria-label="Upgrades">
+    <button id="panel-tab" type="button" aria-expanded="false" aria-controls="panel-body">Upgrades</button>
+    <div id="panel-body">
+      <h2>Upgrades</h2>
+      <div id="upgrade-list"></div>
+    </div>
+  </aside>
 
   <!-- Plain scripts, loaded in order. Each file adds one global object for the next ones to use. -->
   <script src="js/config.js"></script>
   <script src="js/save.js"></script>
+  <script src="js/upgrades.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

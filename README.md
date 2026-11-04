@@ -22,5 +22,7 @@ Add `?reset` to the address (for example `http://localhost:8000/?reset`) to wipe
 - `style.css` — page layout and the counter's look
 - `js/config.js` — all tweakable numbers (costs, speeds, sizes)
 - `js/save.js` — saving and loading with localStorage
+- `js/upgrades.js` — the rules for buying upgrades and what they add up to
 - `js/render.js` — draws the sky, the bit and its effects on the canvas
+- `js/ui.js` — the counter and the upgrade menu
 - `js/main.js` — starts the game, handles taps, runs the animation loop
