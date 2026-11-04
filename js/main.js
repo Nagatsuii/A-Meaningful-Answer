@@ -112,6 +112,31 @@
     }
   }
 
+  // Offline progress: the oscillators kept flipping while the game wasn't running
+  // (page closed, tab in the background, phone asleep). Give the player those bits now.
+  function catchUp(secondsAway) {
+    const rate = Upgrades.flipsPerSecond(state);
+    if (rate <= 0 || !bitIsAlive()) return;
+
+    const maxSeconds = CONFIG.offlineMaxHours * 3600;
+    const counted = Math.min(secondsAway, maxSeconds);
+    flipProgress += rate * counted * CONFIG.offlineEfficiency;
+    const flips = Math.floor(flipProgress);
+    flipProgress -= flips;
+    if (flips === 0) return;
+
+    const earned = flips * CONFIG.upgrades.oscillator.bitsPerFlip;
+    earn(earned);
+    // An odd number of flips leaves the bit the other way round from how you left it.
+    if (flips % 2 === 1) state.bitOn = !state.bitOn;
+
+    if (secondsAway >= CONFIG.offlineMessageMinSeconds) {
+      UI.showAway(secondsAway, earned, secondsAway > maxSeconds);
+    }
+    UI.refresh(state, true);
+    Save.save(state);
+  }
+
   // ---------- input ----------
 
   // Is the point (x, y) close enough to the bit to count as tapping it?
@@ -138,9 +163,14 @@
   });
 
   // Save when the player switches away or closes the tab.
+  function saveNow() {
+    state.lastSeen = Date.now();
+    Save.save(state);
+  }
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden') Save.save(state);
+    if (document.visibilityState === 'hidden') saveNow();
   });
+  window.addEventListener('pagehide', saveNow);
 
   // ---------- start up ----------
 
@@ -164,6 +194,15 @@
       view.birthStart = null;
       UI.refresh(state, true);
     }
+
+    // How much real time has passed since the last frame? Usually a tiny fraction of a second.
+    // If it's longer (the game was closed, hidden, or the phone slept), catch up on what was missed.
+    const clock = Date.now();
+    if (state.lastSeen !== null) {
+      const away = (clock - state.lastSeen) / 1000;
+      if (away > 1) catchUp(away); // a negative number (clock moved back) is simply ignored
+    }
+    state.lastSeen = clock;
 
     runOscillators(dt);
 

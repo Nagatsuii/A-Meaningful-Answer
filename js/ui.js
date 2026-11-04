@@ -10,6 +10,8 @@ const UI = (function () {
   const countEl = document.getElementById('count');
   const unitEl = document.getElementById('unit');
   const rateEl = document.getElementById('rate');
+  const awayEl = document.getElementById('away');
+  let awayTimer = null;
 
   const buttons = {}; // one button per upgrade, found by id
 
@@ -82,5 +84,26 @@ const UI = (function () {
     return { x: width / 2, y: Math.min(box.top, height) / 2 };          // menu along the bottom
   }
 
-  return { build, refresh, skyCentre };
+  // Turn a number of seconds into friendly words, like "2h 14m" or "5 min".
+  function formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    // "\u00a0" is a space that never breaks, so "2h 14m" always stays on one line.
+    if (hours > 0) return minutes > 0 ? `${hours}h\u00a0${minutes}m` : `${hours}h`;
+    if (minutes > 0) return `${minutes}\u00a0min`;
+    return `${Math.floor(seconds)}\u00a0sec`;
+  }
+
+  // Briefly show what the oscillators earned while the player was gone.
+  function showAway(seconds, bits, capped) {
+    let text = `Welcome back. While you were away (${formatDuration(seconds)}), ` +
+      `your oscillators kept flipping: +${bits.toLocaleString()} bits.`;
+    if (capped) text += ` They rest after ${CONFIG.offlineMaxHours} hours.`;
+    awayEl.textContent = text;
+    awayEl.classList.add('show');
+    clearTimeout(awayTimer);
+    awayTimer = setTimeout(() => awayEl.classList.remove('show'), CONFIG.offlineMessageSeconds * 1000);
+  }
+
+  return { build, refresh, skyCentre, showAway };
 })();

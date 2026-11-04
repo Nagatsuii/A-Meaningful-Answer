@@ -10,7 +10,8 @@ const Save = {
       bitOn: false,   // is the bit currently a 1 (true) or a 0 (false)?
       bits: 0,        // the bit counter (our currency)
       lifetimeBits: 0, // every bit ever earned, even ones spent; used to reveal upgrades
-      upgrades: {}    // how many of each upgrade you own, e.g. { amplifier: 2 }
+      upgrades: {},   // how many of each upgrade you own, e.g. { amplifier: 2 }
+      lastSeen: null  // the clock time (in milliseconds) the game was last running
     };
   },
 

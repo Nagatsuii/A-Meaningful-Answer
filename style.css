@@ -58,6 +58,23 @@ body {
   min-height: 1em;
 }
 
+/* The "while you were away" note: fades in, rests a moment, fades out. */
+#away {
+  max-width: 300px;
+  margin: 14px auto 0;
+  padding: 0 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: rgba(255, 236, 205, 0.85);
+  opacity: 0;
+  transition: opacity 1.5s ease;
+}
+
+#away.show {
+  opacity: 1;
+}
+
 /* ---------- The upgrade menu ---------- */
 /* Phones first: a sheet along the bottom. Only its tab peeks out until you open it. */
 
@@ -245,7 +262,8 @@ body {
 /* People who ask their device for less motion get instant changes instead. */
 @media (prefers-reduced-motion: reduce) {
   #counter,
-  #panel {
+  #panel,
+  #away {
     transition: none;
   }
 }

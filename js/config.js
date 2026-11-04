@@ -54,5 +54,11 @@ const CONFIG = {
 
   // --- Automatic flipping ---
   maxVisibleFlipsPerSecond: 2, // the star never blinks faster than this, however many oscillators you own
-  autoSaveSeconds: 5           // how often the game saves while oscillators are earning bits
+  autoSaveSeconds: 5,          // how often the game saves while oscillators are earning bits
+
+  // --- Offline progress (oscillators keep flipping while the game is closed) ---
+  offlineMaxHours: 8,          // time away beyond this doesn't count, so it's worth coming back
+  offlineEfficiency: 1,        // share of normal speed earned while away (0.5 = half speed)
+  offlineMessageMinSeconds: 60, // only say "while you were away" after at least this long
+  offlineMessageSeconds: 9     // how long that note stays on screen
 };
