@@ -58,8 +58,79 @@ const CONFIG = {
       costGrowth: 1,
       revealAt: 150,
       maxOwned: 1              // you can only buy this once
+    },
+
+    // ----- Storage track (teal): keeping information. Helps you earn while away. -----
+    latch: {
+      track: 'storage',
+      name: 'Latch',
+      effect: 'time away counts for 4 more hours',
+      lesson: 'The simplest memory: it holds a 1 or a 0 until it is told to change.',
+      baseCost: 6000,
+      costGrowth: 2.2,
+      revealAt: 32000,
+      maxOwned: 3,
+      hoursEach: 4             // extra offline hours per latch
+    },
+    register: {
+      track: 'storage',
+      name: 'Register',
+      effect: '+50% bits earned while away',
+      lesson: 'A register holds a whole byte right inside the processor, ready to use.',
+      baseCost: 10000,
+      costGrowth: 1.9,
+      revealAt: 38000,
+      bonusEach: 0.5           // +50% offline earnings per register
+    },
+    memoryCell: {
+      track: 'storage',
+      name: 'Memory Cell',
+      effect: '+15 bits per second, always',
+      lesson: 'Memory keeps information from being lost. Your computer\'s RAM is billions of tiny cells like this.',
+      baseCost: 15000,
+      costGrowth: 1.6,
+      revealAt: 45000,
+      bitsPerSecondEach: 15    // earned every second, even while away and with no oscillators
+    },
+
+    // ----- Logic track (violet): transforming information. Makes flips worth more. -----
+    notGate: {
+      track: 'logic',
+      name: 'NOT Gate',
+      effect: 'carries earn double',
+      lesson: 'NOT turns 1 into 0 and 0 into 1. A carry is exactly that: a run of 1s flipping to 0.',
+      baseCost: 6000,
+      costGrowth: 1,
+      revealAt: 32000,
+      maxOwned: 1,
+      carryBonusEach: 1        // each carried flip earns this much extra (1 = double)
+    },
+    andGate: {
+      track: 'logic',
+      name: 'AND Gate',
+      effect: '+100% on taps that leave the two rightmost bits both 1',
+      lesson: 'AND outputs 1 only when both of its inputs are 1.',
+      baseCost: 10000,
+      costGrowth: 1.9,
+      revealAt: 38000,
+      bonusEach: 1
+    },
+    orGate: {
+      track: 'logic',
+      name: 'OR Gate',
+      effect: '+50% on oscillator steps that leave either rightmost bit on',
+      lesson: 'OR outputs 1 when either input is 1, or both.',
+      baseCost: 15000,
+      costGrowth: 1.8,
+      revealAt: 45000,
+      bonusEach: 0.5
     }
   },
+
+  // --- Choosing Storage or Logic (after the byte forms) ---
+  trackChoiceAt: 32000,        // the two paths open once lifetime bits reach this
+  choiceOpenSeconds: 2,        // how long the paths take to draw themselves out of the byte
+  choiceSettleSeconds: 3.2,    // after choosing: the chosen light flows into the byte, the other fades
 
   // --- Bits side by side ---
   // Bits count together in binary. When the rightmost bit rolls over from 1 to 0,

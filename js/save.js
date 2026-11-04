@@ -13,6 +13,7 @@ const Save = {
       upgrades: {},   // how many of each upgrade you own, e.g. { amplifier: 2 }
       joinedBits: 0,  // how many constellation bits (3rd onward) have joined by themselves
       byteFormed: false, // have all eight bits come together as a byte?
+      track: null,    // which path was chosen first: 'storage', 'logic', or null (not yet)
       lastSeen: null  // the clock time (in milliseconds) the game was last running
     };
   },

@@ -226,6 +226,76 @@ body {
   color: rgba(170, 200, 255, 0.9);
 }
 
+/* Track upgrades wear their track's colour. */
+.track-storage {
+  border-color: rgba(110, 225, 215, 0.3);
+}
+.track-storage .upgrade-name {
+  color: #9ef0e7;
+}
+.track-logic {
+  border-color: rgba(190, 150, 255, 0.35);
+}
+.track-logic .upgrade-name {
+  color: #d6c2ff;
+}
+
+/* ---------- The Storage or Logic choice ---------- */
+/* Each button is centred on its doorway of light (main.js moves it there). */
+
+#choice .path {
+  position: fixed;
+  width: 150px;
+  transform: translate(-50%, -28px);   /* the top 56px circle sits over the doorway */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 1.5s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#choice.open .path {
+  opacity: 1;
+}
+
+.path-door {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+}
+
+.path:focus-visible .path-door {
+  outline: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.path-name {
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.path-desc {
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(207, 216, 255, 0.55);
+}
+
+.path-storage .path-name {
+  color: #9ef0e7;
+}
+
+.path-logic .path-name {
+  color: #d6c2ff;
+}
+
 /* ---------- Wide screens: the menu becomes a column on the right ---------- */
 
 @media (min-width: 760px) {
@@ -264,7 +334,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   #counter,
   #panel,
-  #note {
+  #note,
+  #choice .path {
     transition: none;
   }
 }

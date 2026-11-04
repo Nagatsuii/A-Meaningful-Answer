@@ -11,16 +11,18 @@ const UI = (function () {
   const unitEl = document.getElementById('unit');
   const rateEl = document.getElementById('rate');
   const noteEl = document.getElementById('note');
+  const choiceEl = document.getElementById('choice');
   let noteTimer = null;
 
   const buttons = {}; // one button per upgrade, found by id
 
-  // Build the menu once. `onBuy(id)` is called when a button is pressed.
-  function build(onBuy) {
+  // Build the menu once. `onBuy(id)` is called when an upgrade is pressed,
+  // `onChoose(track)` when one of the two paths is picked.
+  function build(onBuy, onChoose) {
     for (const id of Upgrades.ids) {
       const u = CONFIG.upgrades[id];
       const button = document.createElement('button');
-      button.className = 'upgrade';
+      button.className = 'upgrade' + (u.track ? ` track-${u.track}` : ''); // track upgrades get their colour
       button.hidden = true; // stays hidden until the upgrade is revealed
       button.innerHTML = `
         <span class="upgrade-top">
@@ -35,6 +37,10 @@ const UI = (function () {
       buttons[id] = button;
     }
 
+    for (const button of choiceEl.querySelectorAll('button')) {
+      button.addEventListener('click', () => onChoose(button.dataset.track));
+    }
+
     // On phones, the tab opens and closes the sliding menu.
     tab.addEventListener('click', () => {
       const open = panel.classList.toggle('open');
@@ -45,10 +51,13 @@ const UI = (function () {
   // Bring everything on screen up to date with the game state.
   function refresh(state, showCounter) {
     if (showCounter) {
-      countEl.textContent = state.bits.toLocaleString();
-      unitEl.textContent = state.bits === 1 ? 'bit' : 'bits';
+      // Bits can include fractions (from boosts and memory cells), so show whole bits only.
+      const whole = Math.floor(state.bits);
+      countEl.textContent = whole.toLocaleString();
+      unitEl.textContent = whole === 1 ? 'bit' : 'bits';
       const rate = Upgrades.bitsPerSecond(state);
-      rateEl.textContent = rate > 0 ? `+${rate.toLocaleString()} per second` : '';
+      const shown = rate < 10 ? Math.round(rate * 10) / 10 : Math.round(rate); // one decimal when small
+      rateEl.textContent = rate > 0 ? `+${shown.toLocaleString()} per second` : '';
       counterEl.classList.add('visible');
     }
 
@@ -102,13 +111,32 @@ const UI = (function () {
     noteTimer = setTimeout(() => noteEl.classList.remove('show'), seconds * 1000);
   }
 
-  // Briefly show what the oscillators earned while the player was gone.
-  function showAway(seconds, bits, capped) {
+  // Briefly show what was earned while the player was gone.
+  // hours: how long away time counts for; memory: true if memory cells helped.
+  function showAway(seconds, bits, capped, hours, memory) {
+    const who = memory ? 'your byte kept working' : 'your oscillators kept flipping';
     let text = `Welcome back. While you were away (${formatDuration(seconds)}), ` +
-      `your oscillators kept flipping: +${bits.toLocaleString()} bits.`;
-    if (capped) text += ` They rest after ${CONFIG.offlineMaxHours} hours.`;
+      `${who}: +${bits.toLocaleString()} bits.`;
+    if (capped) text += ` Away time counts for up to ${hours} hours.`;
     showNote(text, CONFIG.offlineMessageSeconds);
   }
 
-  return { build, refresh, skyCentre, showNote, showAway };
+  // Show or hide the two path buttons (Storage and Logic).
+  function showChoice(open) {
+    choiceEl.hidden = false;
+    // Wait a frame so the fade-in transition runs.
+    requestAnimationFrame(() => choiceEl.classList.toggle('open', open));
+    if (!open) setTimeout(() => { if (!choiceEl.classList.contains('open')) choiceEl.hidden = true; }, 1200);
+  }
+
+  // Keep each path button sitting on its doorway of light.
+  function placeChoice(points) {
+    for (const button of choiceEl.querySelectorAll('button')) {
+      const p = points[button.dataset.track];
+      button.style.left = `${p.x}px`;
+      button.style.top = `${p.y}px`;
+    }
+  }
+
+  return { build, refresh, skyCentre, showNote, showAway, showChoice, placeChoice };
 })();

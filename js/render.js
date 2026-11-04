@@ -17,6 +17,9 @@ const Render = (function () {
   // the quiet resting pulse is pale blue. Later knowledge kinds (logic, storage) get their own hues.
   const COLOUR_CARRY = [255, 214, 150];
   const COLOUR_AMBIENT = [160, 190, 255];
+  // The two tracks: Storage (keeping information) is calm teal; Logic (transforming it) is soft violet.
+  // Once a track is chosen, the resting pulse takes on its colour.
+  const TRACK_COLOURS = { storage: [110, 225, 215], logic: [190, 150, 255] };
   const BACKGROUND = '#04050a';
   const FONT = 'ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
 
@@ -92,7 +95,7 @@ const Render = (function () {
       value: value,
       start: view.time + (delay || 0),
       duration: duration || CONFIG.carryPulseSeconds,
-      colour: carry ? COLOUR_CARRY : COLOUR_AMBIENT,
+      colour: carry ? COLOUR_CARRY : (TRACK_COLOURS[view.track] || COLOUR_AMBIENT),
       strength: carry ? 0.9 : 0.35
     });
   }
@@ -313,7 +316,9 @@ const Render = (function () {
     const perimeter = 2 * (right - left - 2 * r) + 2 * (bottom - top - 2 * r) + 2 * Math.PI * r;
     ctx.setLineDash([perimeter * draw, perimeter]);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = rgba(COLOUR_ON, alpha);
+    // Once a track is chosen, the byte's outline is tinted with its colour.
+    const outline = TRACK_COLOURS[state.track] ? mix(COLOUR_ON, TRACK_COLOURS[state.track], 0.6) : COLOUR_ON;
+    ctx.strokeStyle = rgba(outline, alpha);
     capsulePath(ctx, left, top, right, bottom, r);
     ctx.stroke();
     ctx.setLineDash([]);
@@ -325,6 +330,72 @@ const Render = (function () {
         const wave = Math.exp(-d * d);
         glow(ctx, s.x, s.y, halo * 1.8, COLOUR_ON, 0.55 * wave);
       });
+    }
+  }
+
+  // A point along a gentle curve from `a` to `b` (t from 0 to 1). The curve leaves `a`
+  // sideways and then drops toward `b`, like light spilling out of the byte.
+  function curvePoint(a, b, t) {
+    const cx = b.x, cy = a.y; // the bend
+    const u = 1 - t;
+    return {
+      x: u * u * a.x + 2 * u * t * cx + t * t * b.x,
+      y: u * u * a.y + 2 * u * t * cy + t * t * b.y
+    };
+  }
+
+  // The Storage or Logic choice: two paths of light open from the byte, each ending in a doorway.
+  // After a choice, the chosen light flows up into the byte and the other path fades away.
+  function drawChoice(ctx, view) {
+    const c = view.choice;
+    const p = view.choicePoints;
+    if (!c || !p) return;
+    const open = easeInOut(clamp01((view.time - c.opened) / CONFIG.choiceOpenSeconds));
+    const since = c.chosen ? view.time - c.chosenAt : 0;
+    const breath = 0.5 + 0.5 * Math.sin(view.time * 1.3);
+
+    for (const track of ['storage', 'logic']) {
+      const colour = TRACK_COLOURS[track];
+      const door = p[track];
+      // How visible this path is: full while choosing; the chosen one glows then fades, the other fades sooner.
+      let visible = 1;
+      if (c.chosen === track) visible = since < 1.3 ? 1 : clamp01(1 - (since - 1.3) / 1.6);
+      else if (c.chosen) visible = clamp01(1 - since / 1.1);
+      if (visible <= 0) continue;
+
+      // The path: drawn as a chain of short glowing segments, growing out of the byte as it opens.
+      const segments = 28;
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < segments; i++) {
+        const t0 = i / segments, t1 = (i + 1) / segments;
+        if (t1 > open) break;
+        const a = curvePoint(p.from, door, t0), b = curvePoint(p.from, door, t1);
+        ctx.strokeStyle = rgba(colour, (0.12 + 0.28 * t1) * visible); // brighter toward the door
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+
+      // The doorway: a softly breathing glow at the end of the path.
+      if (open >= 1) {
+        const lit = c.chosen === track ? 1.4 : 1;
+        glow(ctx, door.x, door.y, 30, colour, (0.22 + 0.12 * breath) * visible * lit);
+        glow(ctx, door.x, door.y, 7, colour, 0.8 * visible);
+      } else {
+        // While opening, a bright tip leads the path.
+        const tip = curvePoint(p.from, door, open);
+        glow(ctx, tip.x, tip.y, 8, colour, 0.6);
+      }
+
+      // The chosen light travels back along its path into the byte.
+      if (c.chosen === track && since < 1.3) {
+        const t = 1 - easeInOut(since / 1.3);
+        for (let k = 0; k < 5; k++) {
+          const q = curvePoint(p.from, door, Math.min(1, t + k * 0.03));
+          glow(ctx, q.x, q.y, 9 - k, colour, 0.9 * (1 - k / 5));
+        }
+      }
     }
   }
 
@@ -406,6 +477,7 @@ const Render = (function () {
       const living = view.birth ? view.birth.index : view.stars.length;
       for (let i = 0; i + 1 < living; i++) drawThread(ctx, view.stars[i], view.stars[i + 1], 1);
       drawByte(ctx, view, state);
+      drawChoice(ctx, view);
       drawPulses(ctx, view);
 
       // Living bits. For returning players they fade in over the first second.

@@ -42,7 +42,10 @@
     labelAlpha: 0,    // how visible the 0/1 labels under the bits are
     starScale: 1,     // stars shrink a little when packed tightly (phones with many bits)
     shapeFactor: state.byteFormed ? 0 : 1, // 1 = wandering constellation, 0 = the straight row of a byte
-    ceremony: null    // { start, swept, noted } while the byte is forming
+    ceremony: null,   // { start, swept, noted } while the byte is forming
+    choice: null,     // { opened, chosen, chosenAt } while the Storage/Logic paths are showing
+    choicePoints: null,
+    track: state.track
   };
 
   // Timers for the oscillators (automatic flipping).
@@ -141,26 +144,31 @@
     state.lifetimeBits += amount;
   }
 
-  // Count up by `steps` in binary. Returns how many bit flips that took in total.
-  function countUp(steps) {
+  // Count up by `steps` in binary, and work out what that earns.
+  // perFlip: bits earned per bit flipped. source: 'tap' or 'osc' (some Logic gates only boost one kind).
+  function countUp(steps, perFlip, source) {
     const n = Upgrades.bitCount(state);
     const size = Math.pow(2, n); // how many different values n bits can show
-    let flips = 0;
+    const carryValue = Upgrades.carryMultiplier(state); // the NOT gate makes carries worth more
+    let earned = 0;
     if (steps <= 1000) {
       for (let k = 0; k < steps; k++) {
         // Adding 1 flips every 1 at the right-hand end to 0, then flips the next 0 to 1.
         // So the flips = (number of 1s in a row at the right) + 1, but never more than n.
+        // Every flip after the first is a carry.
         let ones = 0;
         while (ones < n && bitValue(ones) === 1) ones++;
-        flips += Math.min(ones + 1, n);
+        const flips = Math.min(ones + 1, n);
         state.value = (state.value + 1) % size;
+        const gain = (1 + (flips - 1) * carryValue) * perFlip;
+        earned += gain * Upgrades.gateBonus(state, source, state.value);
       }
     } else {
       // For huge numbers of steps (like coming back after hours away) use the average instead.
-      flips = Math.round(steps * Upgrades.averageFlipsPerStep(state));
+      earned = steps * Upgrades.averageStepEarning(state, perFlip, source);
       state.value = (state.value + steps) % size;
     }
-    return flips;
+    return earned;
   }
 
   function tap() {
@@ -180,8 +188,7 @@
     if (!ready()) return;
 
     // Every tap after that: count up by one, and earn bits for every bit that flipped.
-    const flips = countUp(1);
-    earn(Upgrades.bitsPerTap(state) * flips);
+    earn(countUp(1, Upgrades.bitsPerTap(state), 'tap'));
     syncStars();
     Render.ripple(view, 0, 0.16, 46); // a soft, quiet ring
     UI.refresh(state, true);
@@ -298,7 +305,7 @@
     const steps = Math.floor(flipProgress);
     if (steps === 0) return;
     flipProgress -= steps;
-    earn(countUp(steps) * CONFIG.upgrades.oscillator.bitsPerFlip);
+    earn(countUp(steps, CONFIG.upgrades.oscillator.bitsPerFlip, 'osc'));
 
     if (view.time - lastVisibleFlip >= 1 / CONFIG.maxVisibleFlipsPerSecond) {
       lastVisibleFlip = view.time;
@@ -307,28 +314,96 @@
     }
   }
 
-  // Offline progress: the oscillators kept counting while the game wasn't running
+  // Memory cells (Storage track) earn a steady trickle of bits, always.
+  function runMemory(dt) {
+    if (ready()) earn(Upgrades.trickle(state) * dt);
+  }
+
+  // Offline progress: oscillators and memory cells kept working while the game wasn't running
   // (page closed, tab in the background, phone asleep). Give the player those bits now.
+  // Storage upgrades make this count for longer (latches) and pay more (registers).
   function catchUp(secondsAway) {
     const rate = Upgrades.flipsPerSecond(state);
-    if (rate <= 0 || !ready()) return;
+    const trickle = Upgrades.trickle(state);
+    if ((rate <= 0 && trickle <= 0) || !ready()) return;
 
-    const maxSeconds = CONFIG.offlineMaxHours * 3600;
-    const counted = Math.min(secondsAway, maxSeconds);
-    flipProgress += rate * counted * CONFIG.offlineEfficiency;
+    const hours = Upgrades.offlineHours(state);
+    const maxSeconds = hours * 3600;
+    const counted = Math.min(secondsAway, maxSeconds) * Upgrades.offlineMultiplier(state);
+    let earned = trickle * counted;
+    flipProgress += rate * counted;
     const steps = Math.floor(flipProgress);
     flipProgress -= steps;
-    if (steps === 0) return;
+    if (steps > 0) earned += countUp(steps, CONFIG.upgrades.oscillator.bitsPerFlip, 'osc');
+    if (earned <= 0) return;
 
-    const earned = countUp(steps) * CONFIG.upgrades.oscillator.bitsPerFlip;
     earn(earned);
     syncStars(); // the bits show wherever all that counting left them
 
     if (secondsAway >= CONFIG.offlineMessageMinSeconds) {
-      UI.showAway(secondsAway, earned, secondsAway > maxSeconds);
+      UI.showAway(secondsAway, Math.floor(earned), secondsAway > maxSeconds, hours, trickle > 0);
     }
     UI.refresh(state, true);
     Save.save(state);
+  }
+
+  // ---------- choosing Storage or Logic ----------
+
+  // Once the byte has formed and enough bits are earned, two paths of light open below the byte.
+  // Tapping one chooses that track first; the other dims and stays locked for now.
+  function runChoice() {
+    if (!view.choice && ready() && state.byteFormed && !state.track &&
+        state.lifetimeBits >= CONFIG.trackChoiceAt) {
+      view.choice = { opened: view.time, chosen: null, chosenAt: 0, noted: false };
+      UI.showChoice(true);
+      UI.showNote('Your byte can grow two ways.\nChoose which path to follow first.', 12);
+    }
+    const c = view.choice;
+    if (!c) return;
+    view.choicePoints = choicePoints();
+    UI.placeChoice(view.choicePoints);
+
+    if (c.chosen) {
+      const t = view.time - c.chosenAt;
+      // The chosen light reaches the byte: it ripples, and the note names the path.
+      if (!c.noted && t >= 1.3) {
+        c.noted = true;
+        view.stars.forEach((s, i) => Render.ripple(view, i, 0.2, 40));
+        UI.showNote(c.chosen === 'storage'
+          ? 'Storage.\nInformation, kept.\nYour byte remembers, even while you are away.'
+          : 'Logic.\nInformation, transformed.\nYour byte learns to make every flip count.', 10);
+      }
+      if (t >= CONFIG.choiceSettleSeconds) view.choice = null;
+    }
+  }
+
+  function choose(track) {
+    const c = view.choice;
+    if (!c || c.chosen) return;
+    c.chosen = track;
+    c.chosenAt = view.time;
+    state.track = track;
+    UI.showChoice(false);
+    UI.refresh(state, true);
+    Save.save(state);
+  }
+
+  // Where the two paths start (just below the byte) and where their doorways sit.
+  function choicePoints() {
+    const xs = view.stars.map(s => s.x);
+    const midX = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const midY = view.stars.reduce((sum, s) => sum + s.y, 0) / view.stars.length;
+    // Start just below the byte's binary readout, so the paths don't cross it.
+    const from = { x: midX, y: midY + CONFIG.bitHaloRadius * view.starScale + 66 };
+    const skyBottom = view.cy * 2;                       // bottom of the open sky (above a phone's menu tab)
+    const reach = Math.max(CONFIG.tapRadiusMin, Math.min(view.width, view.height) * CONFIG.tapRadiusScreenShare);
+    const down = Math.min(Math.max(190, reach + 110), skyBottom - midY - 110);
+    const across = Math.min(170, view.cx * 2 * 0.28);
+    return {
+      from: from,
+      storage: { x: midX - across, y: midY + down },
+      logic: { x: midX + across, y: midY + down }
+    };
   }
 
   // ---------- input ----------
@@ -388,7 +463,7 @@
   // One star per bit (before the first tap there's one, waiting to be born).
   for (let i = 0; i < Upgrades.bitCount(state); i++) view.stars.push(makeStar(i));
 
-  UI.build(buy);
+  UI.build(buy, choose);
   UI.refresh(state, ready());
   window.addEventListener('resize', resize);
   resize();
@@ -418,8 +493,11 @@
     state.lastSeen = clock;
 
     runOscillators(dt);
+    runMemory(dt);
     checkForNewBits();
     runCeremony();
+    runChoice();
+    view.track = state.track; // the resting pulse takes on the chosen track's colour
 
     // Refresh the counter and menu a few times a second (often enough to look live, cheap on phones).
     uiTimer += dt;
