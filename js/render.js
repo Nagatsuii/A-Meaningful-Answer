@@ -425,6 +425,36 @@ const Render = (function () {
     ctx.font = `13px ${FONT}`;
     ctx.fillStyle = rgba(COLOUR_HINT, 0.4 * view.labelAlpha);
     ctx.fillText(`${binary} = ${value}`, middle, lowest + below + 34);
+
+    if (view.showRule) drawRule(ctx, view, middle, lowest + below + 62);
+  }
+
+  // The IF · THEN · ELSE rule, written in retro code text under the byte.
+  // Each step takes exactly one branch, and that branch lights up for a moment.
+  function drawRule(ctx, view, x, y) {
+    const parts = [
+      { text: 'IF carry', key: 'if' },
+      { text: 'THEN ×3', key: 'then' },
+      { text: 'ELSE ×1.5', key: 'else' }
+    ];
+    const gapPx = 22;
+    ctx.font = `12px ${FONT}`;
+    ctx.textAlign = 'left';
+    const widths = parts.map(p => ctx.measureText(p.text).width);
+    let left = x - (widths.reduce((a, b) => a + b, 0) + gapPx * (parts.length - 1)) / 2;
+
+    const b = view.branch;
+    const lit = b ? Math.exp(-(view.time - b.at) * 2.5) : 0; // fades over about a second
+    const violet = TRACK_COLOURS.logic;
+    parts.forEach((p, i) => {
+      let alpha = 0.35;
+      if (p.key === 'if') alpha = 0.35 + 0.3 * lit;            // the condition is checked every step
+      if (b && p.key === b.which) alpha = 0.35 + 0.6 * lit;    // the branch that ran glows brightest
+      ctx.fillStyle = rgba(violet, alpha * view.labelAlpha);
+      ctx.fillText(p.text, left, y);
+      left += widths[i] + gapPx;
+    });
+    ctx.textAlign = 'center';
   }
 
   // The birth of a bit, in two parts: first a pinprick slowly gathering light,

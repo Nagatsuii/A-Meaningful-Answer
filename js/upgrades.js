@@ -5,7 +5,7 @@ const Upgrades = {
   // The order upgrades are listed in the menu.
   ids: ['amplifier', 'oscillator', 'secondBit',
     'latch', 'register', 'memoryCell',     // Storage track
-    'notGate', 'andGate', 'orGate'],       // Logic track
+    'notGate', 'andGate', 'orGate', 'ifThenElse'], // Logic track
 
   // How many of this upgrade the player owns.
   owned(state, id) {
@@ -100,15 +100,47 @@ const Upgrades = {
     return 1;
   },
 
-  // What one step earns on average, for when there are too many steps to count one by one.
-  // (Counting up, both rightmost bits are 1 a quarter of the time; at least one is 1 three quarters of the time.)
+  // The IF · THEN · ELSE rule: every step checks one condition and takes exactly one path.
+  //   IF the step carried  THEN multiply by thenMultiplier  ELSE multiply by elseMultiplier
+  // Without the upgrade, both paths are simply ×1.
+  branchMultiplier(state, carried) {
+    if (this.owned(state, 'ifThenElse') === 0) return 1;
+    const u = CONFIG.upgrades.ifThenElse;
+    if (carried) {
+      return u.thenMultiplier;
+    } else {
+      return u.elseMultiplier;
+    }
+  },
+
+  // One counting step, starting from `value`: what it earns, whether it carried, and the new value.
+  // This is the single place that decides what a step is worth.
+  // perFlip: bits per bit flipped. source: 'tap' or 'osc' (the AND gate boosts taps, OR boosts oscillators).
+  step(state, value, perFlip, source) {
+    const n = this.bitCount(state);
+    // Adding 1 flips every 1 at the right-hand end to 0, then flips the next 0 to 1.
+    // So the flips = (number of 1s in a row at the right) + 1, but never more than n.
+    // Every flip after the first is a carry.
+    let ones = 0;
+    while (ones < n && Math.floor(value / Math.pow(2, ones)) % 2 === 1) ones++;
+    const flips = Math.min(ones + 1, n);
+    const carried = flips > 1;
+    const next = (value + 1) % Math.pow(2, n);
+
+    let gain = (1 + (flips - 1) * this.carryMultiplier(state)) * perFlip; // NOT gate: carries worth more
+    gain *= this.branchMultiplier(state, carried);                         // IF carried THEN ×3 ELSE ×1.5
+    gain *= this.gateBonus(state, source, next);                           // AND / OR gates
+    return { gain: gain, carried: carried, next: next };
+  },
+
+  // What one step earns on average, for when there are too many steps to count one by one
+  // (like hours away). Counting goes round in a loop through every value the bits can show,
+  // so we walk that loop once (at most 256 steps for a byte) and take the average.
   averageStepEarning(state, perFlip, source) {
-    const carries = this.averageFlipsPerStep(state) - 1;
-    const base = (1 + carries * this.carryMultiplier(state)) * perFlip;
-    const bonus = source === 'tap'
-      ? 1 + 0.25 * this.owned(state, 'andGate') * CONFIG.upgrades.andGate.bonusEach
-      : 1 + 0.75 * this.owned(state, 'orGate') * CONFIG.upgrades.orGate.bonusEach;
-    return base * bonus;
+    const size = Math.pow(2, this.bitCount(state));
+    let total = 0;
+    for (let v = 0; v < size; v++) total += this.step(state, v, perFlip, source).gain;
+    return total / size;
   },
 
   // ---------- Storage track ----------

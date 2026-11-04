@@ -124,6 +124,18 @@ const CONFIG = {
       costGrowth: 1.8,
       revealAt: 45000,
       bonusEach: 0.5
+    },
+    ifThenElse: {
+      track: 'logic',
+      name: 'IF · THEN · ELSE',
+      effect: 'IF a step carries, THEN it earns ×3, ELSE it earns ×1.5',
+      lesson: 'Programs make choices: check a condition, then take one path or the other. Every app you use is full of IF, THEN and ELSE.',
+      baseCost: 22000,
+      costGrowth: 1,
+      revealAt: 55000,
+      maxOwned: 1,
+      thenMultiplier: 3,       // a step that carries earns this many times as much
+      elseMultiplier: 1.5      // a step that doesn't carry earns this many times as much
     }
   },
 

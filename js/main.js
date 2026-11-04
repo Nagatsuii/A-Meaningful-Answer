@@ -45,13 +45,15 @@
     ceremony: null,   // { start, swept, noted } while the byte is forming
     choice: null,     // { opened, chosen, chosenAt } while the Storage/Logic paths are showing
     choicePoints: null,
-    track: state.track
+    track: state.track,
+    branch: null      // { which: 'then' or 'else', at } — the IF · THEN · ELSE branch that last ran
   };
 
   // Timers for the oscillators (automatic flipping).
   let flipProgress = 0;     // builds up to 1, then the oscillators step the counter once
   let lastVisibleFlip = 0;  // when the stars last visibly changed from an automatic step
   let saveTimer = 0;
+  let lastStepCarried = false; // did the most recent counting step carry? (for the IF · THEN · ELSE display)
   let uiTimer = 0;
 
   // Is the sky ready for play (first bit born, nothing being born right now)?
@@ -147,21 +149,15 @@
   // Count up by `steps` in binary, and work out what that earns.
   // perFlip: bits earned per bit flipped. source: 'tap' or 'osc' (some Logic gates only boost one kind).
   function countUp(steps, perFlip, source) {
-    const n = Upgrades.bitCount(state);
-    const size = Math.pow(2, n); // how many different values n bits can show
-    const carryValue = Upgrades.carryMultiplier(state); // the NOT gate makes carries worth more
+    const size = Math.pow(2, Upgrades.bitCount(state)); // how many different values the bits can show
     let earned = 0;
     if (steps <= 1000) {
+      // Count one step at a time (Upgrades.step works out what each step is worth).
       for (let k = 0; k < steps; k++) {
-        // Adding 1 flips every 1 at the right-hand end to 0, then flips the next 0 to 1.
-        // So the flips = (number of 1s in a row at the right) + 1, but never more than n.
-        // Every flip after the first is a carry.
-        let ones = 0;
-        while (ones < n && bitValue(ones) === 1) ones++;
-        const flips = Math.min(ones + 1, n);
-        state.value = (state.value + 1) % size;
-        const gain = (1 + (flips - 1) * carryValue) * perFlip;
-        earned += gain * Upgrades.gateBonus(state, source, state.value);
+        const result = Upgrades.step(state, state.value, perFlip, source);
+        state.value = result.next;
+        earned += result.gain;
+        lastStepCarried = result.carried;
       }
     } else {
       // For huge numbers of steps (like coming back after hours away) use the average instead.
@@ -190,6 +186,7 @@
     // Every tap after that: count up by one, and earn bits for every bit that flipped.
     earn(countUp(1, Upgrades.bitsPerTap(state), 'tap'));
     syncStars();
+    showBranch();
     Render.ripple(view, 0, 0.16, 46); // a soft, quiet ring
     UI.refresh(state, true);
     Save.save(state);
@@ -310,6 +307,7 @@
     if (view.time - lastVisibleFlip >= 1 / CONFIG.maxVisibleFlipsPerSecond) {
       lastVisibleFlip = view.time;
       syncStars();
+      showBranch();
       Render.ripple(view, 0, 0.07, 34); // even quieter than a tap
     }
   }
@@ -345,6 +343,12 @@
     }
     UI.refresh(state, true);
     Save.save(state);
+  }
+
+  // Light up whichever branch of the IF · THEN · ELSE rule the last step took.
+  function showBranch() {
+    if (Upgrades.owned(state, 'ifThenElse') === 0) return;
+    view.branch = { which: lastStepCarried ? 'then' : 'else', at: view.time };
   }
 
   // ---------- choosing Storage or Logic ----------
@@ -498,6 +502,7 @@
     runCeremony();
     runChoice();
     view.track = state.track; // the resting pulse takes on the chosen track's colour
+    view.showRule = Upgrades.owned(state, 'ifThenElse') > 0;
 
     // Refresh the counter and menu a few times a second (often enough to look live, cheap on phones).
     uiTimer += dt;
