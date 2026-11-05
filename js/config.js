@@ -144,6 +144,15 @@ const CONFIG = {
   choiceOpenSeconds: 2,        // how long the paths take to draw themselves out of the byte
   choiceSettleSeconds: 3.2,    // after choosing: the chosen light flows into the byte, the other fades
 
+  // --- The hook (end of the first hour) ---
+  // The path you didn't choose glows faintly again, and far off a dark shimmer appears: a black hole.
+  hookAt: 70000,               // lifetime bits needed (after choosing a track)
+  hookDoorSeconds: 6,          // the locked doorway fades back in over this long
+  hookShimmerDelay: 10,        // seconds later, the dark shimmer starts to appear...
+  hookShimmerSeconds: 20,      // ...and takes this long to fully fade in, because it's far away
+  blackHoleRadius: 11,         // size of the dark centre, in screen pixels
+  blackHoleSpecks: 14,         // specks of light slowly spiralling in
+
   // --- Bits side by side ---
   // Bits count together in binary. When the rightmost bit rolls over from 1 to 0,
   // a "carry" pulse travels to its neighbour and flips it, just like a real counter.

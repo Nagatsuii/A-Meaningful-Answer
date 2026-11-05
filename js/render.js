@@ -124,6 +124,8 @@ const Render = (function () {
     // Ripples last 1.2 seconds.
     view.ripples = view.ripples.filter(r => view.time - r.start < 1.2);
 
+    updateSpecks(view, dt);
+
     // When a carry pulse reaches its bit, that bit flips.
     for (const pulse of view.pulses) {
       if (view.time - pulse.start < pulse.duration) continue;
@@ -399,6 +401,102 @@ const Render = (function () {
     }
   }
 
+  // ---------- the hook ----------
+
+  // How visible the locked doorway and the black hole are, from 0 to 1.
+  function hookVisibility(view) {
+    const h = view.hook;
+    if (!h) return { door: 0, hole: 0 };
+    const t = view.time - h.start;
+    if (h.quick) return { door: clamp01(t / 2), hole: clamp01(t / 3) };
+    return {
+      door: clamp01(t / CONFIG.hookDoorSeconds),
+      hole: clamp01((t - CONFIG.hookShimmerDelay) / CONFIG.hookShimmerSeconds)
+    };
+  }
+
+  // Specks of light slowly spiralling into the black hole, like information falling in.
+  // Each speck has an angle and a distance; it circles faster and fades as it nears the centre.
+  function updateSpecks(view, dt) {
+    if (!view.hookPoints) return;
+    if (!view.specks) view.specks = [];
+    const r = CONFIG.blackHoleRadius;
+    while (view.specks.length < CONFIG.blackHoleSpecks) {
+      view.specks.push({ angle: Math.random() * Math.PI * 2, dist: r * (1.8 + Math.random() * 4) });
+    }
+    for (const s of view.specks) {
+      s.angle += dt * 9 / s.dist * (calm ? 0.4 : 1); // closer = faster, like a real orbit
+      s.dist -= dt * (1.2 + 14 / s.dist);
+      if (s.dist < r * 1.05) {                       // fallen in: start again far out
+        s.angle = Math.random() * Math.PI * 2;
+        s.dist = r * (4.5 + Math.random() * 1.5);
+      }
+    }
+  }
+
+  // The black hole: a tiny disc darker than the sky, a faint shimmering ring of light around it,
+  // and specks spiralling in. Drawn very dim, because it's far away.
+  function drawBlackHole(ctx, view, visible) {
+    if (visible <= 0) return;
+    const { x, y } = view.hookPoints.hole;
+    const r = CONFIG.blackHoleRadius;
+    const ringColour = [200, 170, 255];
+
+    // A very faint haze around it.
+    glow(ctx, x, y, r * 5, [120, 100, 200], 0.06 * visible);
+
+    // The ring: many short arcs, each brightening and dimming in a slow ripple around the circle.
+    const pieces = 36;
+    ctx.lineWidth = 1.4;
+    for (let i = 0; i < pieces; i++) {
+      const a0 = (i / pieces) * Math.PI * 2;
+      const a1 = ((i + 1) / pieces) * Math.PI * 2;
+      const ripple = 0.5 + 0.5 * Math.sin(a0 * 3 + view.time * (calm ? 0.3 : 0.8));
+      ctx.strokeStyle = rgba(ringColour, (0.08 + 0.3 * ripple) * visible);
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.45, a0, a1);
+      ctx.stroke();
+    }
+
+    // Specks falling in.
+    for (const s of view.specks || []) {
+      const fade = clamp01((s.dist - r) / (r * 1.5)) * clamp01((r * 6 - s.dist) / (r * 1.5));
+      const sx = x + Math.cos(s.angle) * s.dist;
+      const sy = y + Math.sin(s.angle) * s.dist * 0.55; // squashed into a tilted disc
+      glow(ctx, sx, sy, 2.5, ringColour, 0.45 * fade * visible);
+    }
+
+    // The dark centre, painted normally (not as light) so it is darker than the sky around it.
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.9 * visible})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+  }
+
+  // The path you didn't choose: a faint, slowly breathing doorway with its name.
+  function drawLockedDoor(ctx, view, visible) {
+    if (visible <= 0) return;
+    const p = view.hookPoints;
+    const colour = TRACK_COLOURS[p.track];
+    const breath = 0.5 + 0.5 * Math.sin(view.time * 0.7);
+    glow(ctx, p.door.x, p.door.y, 30, colour, (0.06 + 0.06 * breath) * visible);
+    glow(ctx, p.door.x, p.door.y, 5, colour, 0.35 * visible);
+    ctx.font = `11px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = rgba(colour, (0.18 + 0.1 * breath) * visible);
+    ctx.fillText(p.track === 'storage' ? 'S T O R A G E' : 'L O G I C', p.door.x, p.door.y + 30);
+  }
+
+  function drawHook(ctx, view) {
+    if (!view.hook || !view.hookPoints) return;
+    const v = hookVisibility(view);
+    drawBlackHole(ctx, view, v.hole);
+    drawLockedDoor(ctx, view, v.door);
+  }
+
   // The 0 or 1 under each bit, so you can read the binary number.
   // With three or more bits, the whole number is also written out below, with its everyday value:
   // e.g. "0101 = 5".
@@ -508,6 +606,7 @@ const Render = (function () {
       for (let i = 0; i + 1 < living; i++) drawThread(ctx, view.stars[i], view.stars[i + 1], 1);
       drawByte(ctx, view, state);
       drawChoice(ctx, view);
+      drawHook(ctx, view);
       drawPulses(ctx, view);
 
       // Living bits. For returning players they fade in over the first second.

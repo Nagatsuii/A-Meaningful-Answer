@@ -46,7 +46,9 @@
     choice: null,     // { opened, chosen, chosenAt } while the Storage/Logic paths are showing
     choicePoints: null,
     track: state.track,
-    branch: null      // { which: 'then' or 'else', at } — the IF · THEN · ELSE branch that last ran
+    branch: null,     // { which: 'then' or 'else', at } — the IF · THEN · ELSE branch that last ran
+    hook: null,       // { start, quick, noted } once the hook has begun
+    hookPoints: null  // where the locked doorway and the black hole sit
   };
 
   // Timers for the oscillators (automatic flipping).
@@ -410,6 +412,55 @@
     };
   }
 
+  // ---------- the hook: a locked path and a distant dark shimmer ----------
+
+  // The track the player didn't choose.
+  function otherTrack() {
+    return state.track === 'storage' ? 'logic' : 'storage';
+  }
+
+  function runHook() {
+    if (!view.hook && ready() && state.track && (state.hookSeen || state.lifetimeBits >= CONFIG.hookAt)) {
+      // First time: a slow reveal with a note. Returning players just see it fade in quickly.
+      view.hook = { start: view.time, quick: !!state.hookSeen, noted: !!state.hookSeen };
+      if (!state.hookSeen) {
+        state.hookSeen = true;
+        Save.save(state);
+      }
+    }
+    const h = view.hook;
+    if (!h) return;
+
+    const skyWidth = view.cx * 2, skyHeight = view.cy * 2;
+    view.hookPoints = {
+      track: otherTrack(),
+      door: choicePoints()[otherTrack()],
+      // Far off in the upper left of the sky, clear of the counter and the notes under it.
+      hole: { x: Math.max(40, skyWidth * 0.13), y: Math.max(200, skyHeight * 0.3) }
+    };
+
+    if (!h.noted && view.time - h.start >= CONFIG.hookShimmerDelay) {
+      h.noted = true;
+      UI.showNote('Far off, something dark\nis drawing in the light.', 12);
+    }
+  }
+
+  // Tapping the hook's two mysteries just gives a hint.
+  function hookTapped(x, y) {
+    const p = view.hookPoints;
+    if (!view.hook || !p) return false;
+    if (Math.hypot(x - p.hole.x, y - p.hole.y) < 40) {
+      UI.showNote('Not yet.\nIt is very far away.', 6);
+      return true;
+    }
+    if (Math.hypot(x - p.door.x, y - p.door.y) < 44) {
+      const name = p.track === 'storage' ? 'Storage' : 'Logic';
+      UI.showNote(`${name} is still locked.\nSomething bigger has to happen first.`, 7);
+      return true;
+    }
+    return false;
+  }
+
   // ---------- input ----------
 
   // How far is point (x, y) from the straight line between stars a and b?
@@ -437,7 +488,9 @@
   canvas.addEventListener('pointerdown', function (event) {
     event.preventDefault();
     const rect = canvas.getBoundingClientRect();
-    if (isOnBits(event.clientX - rect.left, event.clientY - rect.top)) tap();
+    const x = event.clientX - rect.left, y = event.clientY - rect.top;
+    if (hookTapped(x, y)) return;
+    if (isOnBits(x, y)) tap();
   });
 
   // Space or Enter taps too, for keyboard players.
@@ -501,6 +554,7 @@
     checkForNewBits();
     runCeremony();
     runChoice();
+    runHook();
     view.track = state.track; // the resting pulse takes on the chosen track's colour
     view.showRule = Upgrades.owned(state, 'ifThenElse') > 0;
 

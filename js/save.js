@@ -14,6 +14,7 @@ const Save = {
       joinedBits: 0,  // how many constellation bits (3rd onward) have joined by themselves
       byteFormed: false, // have all eight bits come together as a byte?
       track: null,    // which path was chosen first: 'storage', 'logic', or null (not yet)
+      hookSeen: false, // has the locked path and the distant dark shimmer appeared yet?
       lastSeen: null  // the clock time (in milliseconds) the game was last running
     };
   },
