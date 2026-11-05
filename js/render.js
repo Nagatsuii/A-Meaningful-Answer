@@ -219,14 +219,16 @@ const Render = (function () {
   }
 
   // A thread of light between two stars. `grow` 0..1 draws it part of the way, for when it first forms.
-  function drawThread(ctx, a, b, grow) {
+  // `bright` scales how strongly it shines (the threads light up for good when the 5th bit arrives).
+  function drawThread(ctx, a, b, grow, bright) {
     if (grow <= 0) return;
+    const shine = 0.14 * (bright || 1);
     const ex = a.x + (b.x - a.x) * grow;
     const ey = a.y + (b.y - a.y) * grow;
     const g = ctx.createLinearGradient(a.x, a.y, ex, ey);
     g.addColorStop(0, rgba(COLOUR_HINT, 0));
-    g.addColorStop(0.2, rgba(COLOUR_HINT, 0.14));
-    g.addColorStop(0.8, rgba(COLOUR_HINT, 0.14));
+    g.addColorStop(0.2, rgba(COLOUR_HINT, shine));
+    g.addColorStop(0.8, rgba(COLOUR_HINT, shine));
     g.addColorStop(1, rgba(COLOUR_HINT, grow < 1 ? 0.3 : 0)); // the growing tip glows brighter
     ctx.strokeStyle = g;
     ctx.lineWidth = 1;
@@ -264,7 +266,7 @@ const Render = (function () {
     for (const r of view.ripples) {
       const star = view.stars[r.star];
       if (!star) continue;
-      const t = (view.time - r.start) / 1.2;       // 0 → 1 over the ripple's life
+      const t = clamp01((view.time - r.start) / 1.2); // 0 → 1 over the ripple's life
       const eased = 1 - Math.pow(1 - t, 3);        // fast at first, then slowing
       const radius = CONFIG.bitCoreRadius + eased * r.size;
       ctx.strokeStyle = rgba(COLOUR_HINT, r.strength * (1 - t));
@@ -607,7 +609,10 @@ const Render = (function () {
     } else {
       // Threads between bits that are fully alive (a newborn's thread is drawn by drawBirth).
       const living = view.birth ? view.birth.index : view.stars.length;
-      for (let i = 0; i + 1 < living; i++) drawThread(ctx, view.stars[i], view.stars[i + 1], 1);
+      // From the 5th bit on, the threads shine brighter; when it's born they flare, then settle.
+      const lit = view.stars.length >= CONFIG.resonanceMomentAtBit && living >= CONFIG.resonanceMomentAtBit ? 1.7 : 1;
+      const flare = view.flareAt !== undefined ? 3 * Math.exp(-(view.time - view.flareAt) * 1.2) : 0;
+      for (let i = 0; i + 1 < living; i++) drawThread(ctx, view.stars[i], view.stars[i + 1], 1, lit + flare);
       drawByte(ctx, view, state);
       drawChoice(ctx, view);
       drawHook(ctx, view);
@@ -622,6 +627,7 @@ const Render = (function () {
       if (view.birth) drawBirth(ctx, view);
     }
 
+    Boosters.draw(ctx, view);
     drawRipples(ctx, view);
     drawParticles(ctx, view);
     ctx.globalCompositeOperation = 'source-over';
@@ -642,5 +648,6 @@ const Render = (function () {
     if (star) burst(view, star.x, star.y, 12);
   }
 
-  return { update, draw, ripple, sendPulse, sparkle };
+  // glow and rgba are shared with boosters.js so boosters match the rest of the sky.
+  return { update, draw, ripple, sendPulse, sparkle, burst, glow, rgba };
 })();

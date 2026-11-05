@@ -44,6 +44,12 @@ const Achievements = {
       name: 'Megabit',
       text: '1,048,576 bits earned: 1,024 × 1,024.',
       done: state => state.lifetimeBits >= 1048576
+    },
+    {
+      id: 'megabyte',
+      name: 'Megabyte',
+      text: '8,388,608 bits earned: 8 megabits make a megabyte, just as 8 bits make a byte.',
+      done: state => state.lifetimeBits >= 8388608
     }
   ],
 

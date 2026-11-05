@@ -425,6 +425,40 @@ const Sound = (function () {
     });
   }
 
+  // ---------- boosters ----------
+
+  // A booster appears: a short electric crackle (lightning snaps; a light pulse hums in more softly).
+  function boosterAppear(kind) {
+    if (!running()) return;
+    const t = ctx.currentTime;
+    const length = kind === 'lightning' ? 0.3 : 0.45;
+    const crackle = noiseSource(t, length + 0.05);
+    const hiss = filter(kind === 'lightning' ? 'highpass' : 'bandpass', kind === 'lightning' ? 2200 : 1400, 0.8);
+    const gate = ctx.createGain();
+    gate.gain.setValueAtTime(0, t);
+    const level = LEVEL.zap * (kind === 'lightning' ? 0.9 : 0.6);
+    for (let at = t; at < t + length; at += 0.008 + Math.random() * 0.016) {
+      const fade = 1 - (at - t) / length;
+      gate.gain.setValueAtTime(Math.random() < 0.5 ? level * Math.random() * fade : 0, at);
+    }
+    gate.gain.setValueAtTime(0, t + length);
+    crackle.connect(hiss);
+    hiss.connect(gate);
+    gate.connect(master);
+  }
+
+  // Catching a booster: the same rising, crackly zap as buying an upgrade, a little longer.
+  function boosterCatch() {
+    purchase(100000);
+  }
+
+  // The 5th bit's moment: the constellation's notes ring upward in turn, like the threads lighting up.
+  function resonance(bits) {
+    if (!running()) return;
+    const t = ctx.currentTime;
+    for (let i = 0; i < bits; i++) bell(SCALE[i] * 2, t + game(0.12 * i), LEVEL.note * 0.6, 2.6, 0.9);
+  }
+
   // ---------- milestones and 5. achievements ----------
 
   // A bell: one sine wave wobbled by another (FM synthesis). `brightness` = how metallic it sounds;
@@ -586,7 +620,7 @@ const Sound = (function () {
 
   return {
     unlock, update, setBits, setWarm, tap, purchase, affordable,
-    bitBorn, firstPulse, byteChord, achievement, fall,
+    bitBorn, firstPulse, byteChord, achievement, fall, boosterAppear, boosterCatch, resonance,
     setVolume, setMuted, getSettings, suspend, resume
   };
 })();

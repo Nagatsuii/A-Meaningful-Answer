@@ -36,7 +36,7 @@ const CONFIG = {
       effect: '+1 bit for every flip you make',
       lesson: 'An amplifier makes a weak signal stronger.',
       baseCost: 15,
-      costGrowth: 2.1,
+      costGrowth: 1.95,
       revealAt: 5,
       bitsPerTapEach: 1      // extra bits per tap, for each amplifier owned
     },
@@ -45,7 +45,7 @@ const CONFIG = {
       effect: 'flips the bit on its own',
       lesson: 'A circuit that switches itself on and off: the heartbeat inside every computer.',
       baseCost: 40,
-      costGrowth: 1.6,
+      costGrowth: 1.5,
       revealAt: 12,
       flipsPerSecondEach: 1,   // each oscillator flips the bit once a second
       bitsPerFlip: 1           // bits earned for each bit an automatic tick flips
@@ -54,10 +54,44 @@ const CONFIG = {
       name: 'Second Bit',
       effect: 'a second bit joins the first',
       lesson: 'Two bits can hold four states: 00, 01, 10, 11. Each bit you add doubles what can be stored.',
-      baseCost: 9000,
+      baseCost: 22000,
       costGrowth: 1,
-      revealAt: 5000,
+      revealAt: 12000,
       maxOwned: 1              // you can only buy this once
+    },
+    // Bits 3 to 8: one card that's bought again and again. Its name and lesson change with each bit.
+    nextBit: {
+      name: 'Third Bit',
+      names: ['Third Bit', 'Fourth Bit', 'Fifth Bit', 'Sixth Bit', 'Seventh Bit', 'Eighth Bit'],
+      effect: 'a new bit joins: everything earns {bonus}% more',
+      effects: ['a new bit joins: everything earns {bonus}% more', 'a new bit joins: everything earns {bonus}% more',
+        'a new bit joins, and something resonates', 'a new bit joins: everything earns {bonus}% more',
+        'a new bit joins: everything earns {bonus}% more', 'the last bit: it completes the byte'],
+      lesson: 'Three bits hold 8 states, 000 to 111. Every bit you add doubles the count.',
+      lessons: [
+        'Three bits hold 8 states, 000 to 111. Every bit you add doubles the count.',
+        'Four bits hold 16 states. Four bits together are called a nibble.',
+        'Five bits hold 32 states: enough for every letter of the alphabet.',
+        'Six bits hold 64 states. Some early computers used six bits for each character.',
+        'Seven bits hold 128 states: exactly what ASCII uses for letters, digits and symbols.',
+        'Eight bits make a byte: 256 states, the building block of all computer memory.'
+      ],
+      baseCost: 16000,
+      costGrowth: 1.5,         // each bit costs this many times the one before
+      revealAt: 0,
+      requires: 'secondBit',   // only appears once you own the second bit
+      maxOwned: 6              // bits 3, 4, 5, 6, 7 and 8
+    },
+    // Unlocked by the 5th bit: the mid-stretch surprise.
+    resonance: {
+      name: 'Resonance',
+      effect: 'oscillators run 25% faster',
+      lesson: 'Push a swing in time with its rhythm and it goes higher. Circuits tuned to their natural rhythm resonate the same way.',
+      baseCost: 6000,
+      costGrowth: 1.8,
+      revealAt: 0,
+      requiresBits: 5,         // only appears once there are 5 bits
+      speedEach: 0.25          // +25% oscillator speed per level
     },
 
     // ----- Storage track (teal): keeping information. Helps you earn while away. -----
@@ -66,9 +100,9 @@ const CONFIG = {
       name: 'Latch',
       effect: 'time away counts for 4 more hours',
       lesson: 'The simplest memory: it holds a 1 or a 0 until it is told to change.',
-      baseCost: 9000,
+      baseCost: 220000,
       costGrowth: 2.2,
-      revealAt: 125000,
+      revealAt: 830000,
       maxOwned: 3,
       hoursEach: 4             // extra offline hours per latch
     },
@@ -77,9 +111,9 @@ const CONFIG = {
       name: 'Register',
       effect: '+50% bits earned while away',
       lesson: 'A register holds a whole byte right inside the processor, ready to use.',
-      baseCost: 14000,
+      baseCost: 340000,
       costGrowth: 1.9,
-      revealAt: 140000,
+      revealAt: 950000,
       bonusEach: 0.5           // +50% offline earnings per register
     },
     memoryCell: {
@@ -87,9 +121,9 @@ const CONFIG = {
       name: 'Memory Cell',
       effect: '+35 bits per second, always',
       lesson: 'Memory keeps information from being lost. Your computer\'s RAM is billions of tiny cells like this.',
-      baseCost: 18000,
+      baseCost: 280000,
       costGrowth: 1.55,
-      revealAt: 125000,       // at the fork, with the Latch: it's the Storage upgrade that helps while you play
+      revealAt: 830000,        // at the fork, with the Latch: it's the Storage upgrade that helps while you play
       bitsPerSecondEach: 35    // earned every second, even while away and with no oscillators
     },
 
@@ -99,54 +133,54 @@ const CONFIG = {
       name: 'NOT Gate',
       effect: 'carries earn double',
       lesson: 'NOT turns 1 into 0 and 0 into 1. A carry is exactly that: a run of 1s flipping to 0.',
-      baseCost: 9000,
+      baseCost: 220000,
       costGrowth: 1,
-      revealAt: 125000,
+      revealAt: 830000,
       maxOwned: 1,
       carryBonusEach: 1        // each carried flip earns this much extra (1 = double)
     },
     andGate: {
       track: 'logic',
       name: 'AND Gate',
-      effect: '+100% on taps that leave the two rightmost bits both 1',
+      effect: '+{pct:bonusEach}% on taps that leave the two rightmost bits both 1',
       lesson: 'AND outputs 1 only when both of its inputs are 1.',
-      baseCost: 14000,
+      baseCost: 340000,
       costGrowth: 1.7,
-      revealAt: 140000,
-      bonusEach: 1
+      revealAt: 950000,
+      bonusEach: 0.5
     },
     orGate: {
       track: 'logic',
       name: 'OR Gate',
-      effect: '+50% on oscillator steps that leave either rightmost bit on',
+      effect: '+{pct:bonusEach}% on oscillator steps that leave either rightmost bit on',
       lesson: 'OR outputs 1 when either input is 1, or both.',
-      baseCost: 18000,
+      baseCost: 440000,
       costGrowth: 1.65,
-      revealAt: 160000,
-      bonusEach: 0.5
+      revealAt: 1100000,
+      bonusEach: 0.25
     },
     ifThenElse: {
       track: 'logic',
       name: 'IF · THEN · ELSE',
-      effect: 'IF a step carries, THEN it earns ×1.75, ELSE it earns ×1.3',
+      effect: 'IF a step carries, THEN it earns ×{x:thenMultiplier}, ELSE it earns ×{x:elseMultiplier}',
       lesson: 'Programs make choices: check a condition, then take one path or the other. Every app you use is full of IF, THEN and ELSE.',
-      baseCost: 30000,
+      baseCost: 720000,
       costGrowth: 1,
-      revealAt: 180000,
+      revealAt: 1250000,
       maxOwned: 1,
-      thenMultiplier: 1.75,    // a step that carries earns this many times as much
-      elseMultiplier: 1.3      // a step that doesn't carry earns this many times as much
+      thenMultiplier: 1.3,     // a step that carries earns this many times as much
+      elseMultiplier: 1.1      // a step that doesn't carry earns this many times as much
     }
   },
 
   // --- Choosing Storage or Logic (after the byte forms) ---
-  trackChoiceAt: 125000,       // the two paths open once lifetime bits reach this (about 42 minutes in)
+  trackChoiceAt: 830000,       // the two paths open once lifetime bits reach this (about 42 minutes in)
   choiceOpenSeconds: 2,        // how long the paths take to draw themselves out of the byte
   choiceSettleSeconds: 3.2,    // after choosing: the chosen light flows into the byte, the other fades
 
   // --- The hook (end of the first hour) ---
   // The path you didn't choose glows faintly again, and far off a dark shimmer appears: a black hole.
-  hookAt: 230000,              // lifetime bits needed (after choosing a track; about 55 minutes in)
+  hookAt: 2600000,             // lifetime bits needed (after choosing a track; about 57 minutes in)
   hookDoorSeconds: 6,          // the locked doorway fades back in over this long
   hookShimmerDelay: 10,        // seconds later, the dark shimmer starts to appear...
   hookShimmerSeconds: 20,      // ...and takes this long to fully fade in, because it's far away
@@ -161,10 +195,9 @@ const CONFIG = {
   ambientPulseSeconds: 6,      // a slow, quiet pulse drifts between the bits this often
   ambientPulseTravel: 2.6,     // ...and takes this long to travel the whole chain of bits
 
-  // --- The constellation (bits 3 to 7) ---
-  // Once you own the second bit, more bits join by themselves as your lifetime bits pass these totals.
-  // One number per bit: 3rd, 4th, 5th, 6th, 7th, and the 8th, which completes the byte.
-  joinAt: [25000, 37000, 52000, 68000, 85000, 103000], // about 16, 21, 25, 29, 33 and 37 minutes in
+  // --- The constellation (bits 3 to 8, bought with the Next Bit upgrade) ---
+  bitBonusEach: 0.25,          // every bit beyond the first makes all earning 25% more than before (for the rest of the universe)
+  resonanceMomentAtBit: 5,     // when this bit is born, the threads light up and Resonance unlocks
   // How far each bit sits above (-) or below (+) the middle line, as a share of the spacing.
   // Bit 0 (the ones place, on the right) comes first. This is what makes a row into a constellation.
   constellationShape: [0, 0, -0.55, -0.1, 0.45, 0.05, -0.5, 0.3],
@@ -188,11 +221,28 @@ const CONFIG = {
 
   // --- The black hole reset (falling in starts a new universe) ---
   knowledge: {
-    unlockAchievement: 'megabit', // the black hole can be entered once this achievement's goal is met in the current universe
-    divisor: 10000,            // Knowledge gained = square root of (bits earned this universe ÷ this), rounded down
+    unlockAchievement: 'megabyte', // the black hole can be entered once this achievement's goal is met in the current universe
+    divisor: 80000,            // Knowledge gained = square root of (bits earned this universe ÷ this), rounded down (about 10 at the Megabyte)
     bonusEach: 0.1,            // each point of Knowledge adds +10% to all earning, forever
     fallSeconds: 4.5,          // the stars spiral into the dark...
     darkSeconds: 2             // ...then the sky stays black for a moment before the new universe
+  },
+
+  // --- Boosters: things to tap while you play (see boosters.js) ---
+  boosters: {
+    firstAfterSeconds: 90,     // none in the first minute and a half of a visit
+    averageWaitSeconds: 90,    // for someone not tapping, the typical wait after the minimum gap...
+    minGapSeconds: 30,         // ...but never sooner than this after the last one (the cap)
+    clickRateBoost: 0.35,      // each tap per second (averaged over the window) makes them this much more frequent
+    clickRateWindowSeconds: 10,
+    maxClickRate: 6,           // taps per second beyond this don't make boosters any more frequent
+    pulseChance: 0.2,          // the share that are light pulses (the rest are lightning)
+    lightningLifeSeconds: 3.5, // how long each stays before vanishing
+    pulseLifeSeconds: 6,
+    lightningRewardSeconds: 20, // lightning gives this many seconds of your current production at once
+    lightningRewardMin: 25,
+    pulseMultiplier: 7,        // a light pulse multiplies all production...
+    pulseSeconds: 30           // ...for this long
   },
 
   // --- Sound (the sounds themselves, and their loudness, are in audio.js) ---

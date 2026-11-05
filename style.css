@@ -167,6 +167,38 @@ body {
   min-height: 1em;
 }
 
+/* The light pulse's boost timer, under the counter. */
+#boost {
+  display: none;
+  margin: 8px auto 0;
+  width: 190px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 215, 238, 0.95);
+  text-shadow: 0 0 10px rgba(255, 180, 220, 0.5);
+}
+
+#boost.show {
+  display: block;
+}
+
+.boost-track {
+  display: block;
+  height: 3px;
+  margin-top: 5px;
+  background: rgba(255, 205, 235, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.boost-bar {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: rgba(255, 205, 235, 0.85);
+  box-shadow: 0 0 8px rgba(255, 180, 220, 0.8);
+}
+
 /* ---------- Falling into the black hole ---------- */
 
 /* Everything on the page fades away as the stars spiral in. */

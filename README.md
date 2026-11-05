@@ -25,8 +25,9 @@ until you visit with `?dev=0`), by typing `devmode` on a keyboard, or by tapping
   A **TIME ×10** badge shows while it's not 1×. The setting is remembered on this device; `?dev=0` puts it back to 1×.
 - **Bits** adds 1,000 / 100,000 / 1,000,000 bits (milestones still arrive in order).
 - **Jump to** sets the game up just as a milestone happens, then reloads so it plays out:
-  Second bit (ready to buy), Constellation (3rd bit joins), Byte (8th bit joins, byte forms),
+  Second bit, Constellation (Third Bit), Bit 5 and Byte (Eighth Bit) are each ready to buy;
   Track fork (paths open), Hook, Black hole ready. Knowledge, achievements and the universe count are kept.
+- **Boosters** makes a lightning bolt or a light pulse appear right now.
 - **Black hole → Fall in now** starts the fall straight away, from wherever you are.
 - **Save** wipes the save.
 

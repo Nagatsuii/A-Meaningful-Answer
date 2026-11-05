@@ -3,7 +3,7 @@
 
 const Upgrades = {
   // The order upgrades are listed in the menu.
-  ids: ['amplifier', 'oscillator', 'secondBit',
+  ids: ['amplifier', 'oscillator', 'resonance', 'secondBit', 'nextBit',
     'latch', 'register', 'memoryCell',     // Storage track
     'notGate', 'andGate', 'orGate', 'ifThenElse'], // Logic track
 
@@ -32,8 +32,10 @@ const Upgrades = {
   isRevealed(state, id) {
     if (this.isMaxed(state, id)) return false;
     // Track upgrades only show for the track you chose.
-    const track = CONFIG.upgrades[id].track;
-    if (track && state.track !== track) return false;
+    const u = CONFIG.upgrades[id];
+    if (u.track && state.track !== u.track) return false;
+    if (u.requires && this.owned(state, u.requires) === 0) return false;  // e.g. Next Bit needs the second bit
+    if (u.requiresBits && this.bitCount(state) < u.requiresBits) return false; // e.g. Resonance needs 5 bits
     return this.owned(state, id) > 0 || state.lifetimeBits >= CONFIG.upgrades[id].revealAt;
   },
 
@@ -47,20 +49,33 @@ const Upgrades = {
 
   // ---------- what upgrades add up to ----------
 
-  // How many bits are in the sky.
+  // How many bits are in the sky: the first, the second, and however many Next Bits are owned.
   bitCount(state) {
-    return 1 + this.owned(state, 'secondBit') + (state.joinedBits || 0);
+    return 1 + this.owned(state, 'secondBit') + this.owned(state, 'nextBit');
   },
 
-  // How many bits *should* be in the sky by now? The 3rd bit onward joins by itself
-  // when lifetime bits pass each total in CONFIG.joinAt (but only after you own the second bit).
-  bitsEarned(state) {
-    let n = 1 + this.owned(state, 'secondBit');
-    if (n < 2) return n;
-    for (const total of CONFIG.joinAt) {
-      if (state.lifetimeBits >= total) n++;
-    }
-    return n;
+  // A card's name, effect and lesson. Next Bit changes them with each bit bought (Third Bit, Fourth Bit...).
+  text(state, id, field) {
+    const u = CONFIG.upgrades[id];
+    const list = u[field + 's'];   // e.g. "names", "effects", "lessons"
+    const text = list ? list[Math.min(this.owned(state, id), list.length - 1)] : u[field];
+    // Numbers in the text come from config, so a card always matches the rules:
+    //   {bonus} = the bits' bonus, {pct:field} = a field as a percentage, {x:field} = a field as it is.
+    return text
+      .replace('{bonus}', Math.round(CONFIG.bitBonusEach * 100))
+      .replace(/\{pct:(\w+)\}/g, (m, f) => Math.round(u[f] * 100))
+      .replace(/\{x:(\w+)\}/g, (m, f) => u[f]);
+  },
+
+  // Every bit beyond the first makes all earning a little more than before (15% each: two bits ×1.15,
+  // three bits ×1.32, and so on), for the rest of the universe. Multiplying keeps each new bit feeling as big.
+  bitBonus(state) {
+    return Math.pow(1 + CONFIG.bitBonusEach, this.bitCount(state) - 1);
+  },
+
+  // Everything earned is multiplied by this: Knowledge from earlier universes, and the bits' bonus.
+  productionMultiplier(state) {
+    return this.knowledgeMultiplier(state) * this.bitBonus(state);
   },
 
   // Counting up in binary, how many bits flip per step on average?
@@ -76,7 +91,8 @@ const Upgrades = {
 
   // How many times per second the oscillators step the counter forward.
   flipsPerSecond(state) {
-    return this.owned(state, 'oscillator') * CONFIG.upgrades.oscillator.flipsPerSecondEach;
+    const resonance = 1 + this.owned(state, 'resonance') * CONFIG.upgrades.resonance.speedEach;
+    return this.owned(state, 'oscillator') * CONFIG.upgrades.oscillator.flipsPerSecondEach * resonance;
   },
 
   // ---------- Logic track: what one counting step earns ----------

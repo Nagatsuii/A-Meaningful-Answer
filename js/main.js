@@ -28,6 +28,11 @@
     state.value = state.bitOn ? 1 : 0;
     delete state.bitOn;
   }
+  // Bits 3 to 8 used to join by themselves (counted in "joinedBits"); now they're bought as Next Bits.
+  if (state.joinedBits) {
+    state.upgrades.nextBit = (state.upgrades.nextBit || 0) + state.joinedBits;
+  }
+  delete state.joinedBits;
 
   // `view` is only about drawing (sizes, timers, sparks) and is never saved.
   const view = {
@@ -152,9 +157,11 @@
 
   // Add bits to the counter. Every way of earning comes through here, so the testing
   // speed-up (TEST_SPEED, from ?speed= in the address) only needs applying once. Returns what was added.
-  function earn(amount) {
-    // Knowledge from earlier universes multiplies everything, too.
-    const added = amount * TEST_SPEED * Upgrades.knowledgeMultiplier(state);
+  // `noBoost`: leave out the light pulse's boost (for time away, and for lightning's own burst).
+  function earn(amount, noBoost) {
+    // Knowledge from earlier universes and the bits' bonus multiply everything; so does a light pulse's boost.
+    const boost = noBoost ? 1 : Boosters.multiplier(view.time);
+    const added = amount * TEST_SPEED * Upgrades.productionMultiplier(state) * boost;
     state.bits += added;
     state.lifetimeBits += added;
     return added;
@@ -205,6 +212,7 @@
 
     // Every tap after that: count up by one, and earn bits for every bit that flipped.
     state.stats.taps++;
+    Boosters.noteTap();
     earn(countUp(1, Upgrades.bitsPerTap(state), 'tap'));
     syncStars();
     showBranch();
@@ -219,7 +227,7 @@
     const cost = Upgrades.cost(state, id);
     if (!ready() || !Upgrades.buy(state, id)) return;
     Sound.purchase(cost); // a zap of current; pricier upgrades crackle longer
-    if (id === 'secondBit') {
+    if (id === 'secondBit' || id === 'nextBit') {
       addBit();
     } else {
       Render.ripple(view, 0, 0.3, 80); // the bit glows a little wider when it gains something new
@@ -239,15 +247,11 @@
     Sound.bitBorn(index, CONFIG.birthSeconds * 0.3); // each new bit rings its own note as it ignites
   }
 
-  // Bits 3 to 7 join by themselves once enough bits have been earned (see CONFIG.joinAt).
+  // Once all eight bits are here (bought as Next Bits), the byte forms.
   // Only one is born at a time; if several are due (say, after a long time away) they arrive one by one.
   function checkForNewBits() {
     if (!ready()) return;
-    if (Upgrades.bitCount(state) < Upgrades.bitsEarned(state)) {
-      state.joinedBits = (state.joinedBits || 0) + 1;
-      addBit();
-      Save.save(state);
-    } else if (Upgrades.bitCount(state) >= 8 && !state.byteFormed) {
+    if (Upgrades.bitCount(state) >= 8 && !state.byteFormed) {
       // All eight bits are here: the byte forms.
       view.ceremony = { start: view.time + CONFIG.byteDelaySeconds, swept: [], noted: false };
       // Each bit rings as the wave passes it, then all eight bloom into a chord as the note appears.
@@ -312,6 +316,13 @@
     } else if (n === 2) {
       // "\n" starts a new line; "\u00a0" is a space that never breaks, so the four states stay together.
       UI.showNote('Two bits.\nFour possible states:\n00\u00a0·\u00a001\u00a0·\u00a010\u00a0·\u00a011', 10);
+    } else if (n === CONFIG.resonanceMomentAtBit) {
+      // The mid-stretch moment: the threads flare and stay brighter, the notes ring upward,
+      // and Resonance appears in the menu.
+      view.flareAt = view.time;
+      view.stars.forEach((s, i) => Render.ripple(view, i, 0.25, 50));
+      Sound.resonance(n);
+      UI.showNote(`${NUMBER_WORDS[n]} bits. ${Math.pow(2, n)} possible states.\nThe constellation resonates.\nSomething new can be built.`, 10);
     } else if (n > 2) {
       // e.g. "Three bits. 8 possible states: 000 to 111"
       const states = Math.pow(2, n);
@@ -366,7 +377,7 @@
     if (steps > 0) earned += countUp(steps, CONFIG.upgrades.oscillator.bitsPerFlip, 'osc');
     if (earned <= 0) return;
 
-    const added = earn(earned);
+    const added = earn(earned, true); // a booster never multiplies time away
     syncStars(); // the bits show wherever all that counting left them
 
     if (secondsAway >= CONFIG.offlineMessageMinSeconds) {
@@ -564,6 +575,30 @@
     return false;
   }
 
+  // ---------- boosters ----------
+
+  // Did this tap catch a booster? Lightning gives a burst of bits; a light pulse starts a boost.
+  function catchBooster(x, y) {
+    const kind = Boosters.hit(view, x, y);
+    if (!kind) return false;
+    Sound.boosterCatch();
+    Render.burst(view, x, y, 16);
+    if (kind === 'lightning') {
+      // A burst worth some seconds of what you're producing now (oscillators, memory and your tapping).
+      const perSecond = Upgrades.bitsPerSecond(state) +
+        Boosters.clickRate() * Upgrades.averageStepEarning(state, Upgrades.bitsPerTap(state), 'tap');
+      const reward = Math.max(CONFIG.boosters.lightningRewardMin, perSecond * CONFIG.boosters.lightningRewardSeconds);
+      const added = earn(reward, true); // not multiplied by a running boost
+      Boosters.floatText(x, y, `+${Math.round(added).toLocaleString()}`, Boosters.colours.lightning);
+    } else {
+      Boosters.startBoost(view.time);
+      Boosters.floatText(x, y, `×${CONFIG.boosters.pulseMultiplier}`, Boosters.colours.pulse);
+    }
+    UI.refresh(state, true);
+    Save.save(state);
+    return true;
+  }
+
   // ---------- input ----------
 
   // How far is point (x, y) from the straight line between stars a and b?
@@ -592,6 +627,7 @@
     event.preventDefault();
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left, y = event.clientY - rect.top;
+    if (catchBooster(x, y)) return;
     if (hookTapped(x, y)) return;
     if (isOnBits(x, y)) tap();
   });
@@ -659,34 +695,39 @@
   // Upgrades a player would plausibly own at each stage.
   const early = { amplifier: 3, oscillator: 3 };
   const later = { amplifier: 6, oscillator: 8, secondBit: 1 };
-  const allJoined = CONFIG.joinAt.length;                  // bits 3 to 8
+  const allBits = CONFIG.upgrades.nextBit.maxOwned;        // Next Bits for bits 3 to 8
+  const nextBitCost = n => Math.ceil(CONFIG.upgrades.nextBit.baseCost * Math.pow(CONFIG.upgrades.nextBit.costGrowth, n));
   const track = () => state.track || 'storage';           // keep the chosen track if there is one
 
   // Second Bit: affordable, ready to buy (buying it plays the birth).
   Dev.addTool('Jump to', 'Second bit', () => devJump({
     bits: CONFIG.upgrades.secondBit.baseCost, lifetimeBits: CONFIG.upgrades.secondBit.baseCost, upgrades: early
   }));
-  // The 3rd bit joins straight away, starting the constellation.
+  // Two bits, with the Third Bit affordable: buy it to start the constellation.
   Dev.addTool('Jump to', 'Constellation', () => devJump({
-    bits: 300, lifetimeBits: CONFIG.joinAt[0], upgrades: later
+    bits: nextBitCost(0), lifetimeBits: nextBitCost(0), upgrades: later
   }));
-  // Seven bits; the 8th joins straight away and the byte forms.
+  // Four bits, with the Fifth Bit affordable: buy it for the mid-stretch moment and Resonance.
+  Dev.addTool('Jump to', 'Bit 5', () => devJump({
+    bits: nextBitCost(2), lifetimeBits: nextBitCost(2) * 2, upgrades: { ...later, nextBit: 2 }
+  }));
+  // Seven bits, with the Eighth Bit affordable: buy it and the byte forms.
   Dev.addTool('Jump to', 'Byte', () => devJump({
-    bits: 2000, lifetimeBits: CONFIG.joinAt[allJoined - 1], upgrades: later, joinedBits: allJoined - 1
+    bits: nextBitCost(allBits - 1), lifetimeBits: nextBitCost(allBits - 1) * 2, upgrades: { ...later, nextBit: allBits - 1 }
   }));
   // The byte is formed; the Storage / Logic paths open straight away.
   Dev.addTool('Jump to', 'Track fork', () => devJump({
-    bits: 5000, lifetimeBits: CONFIG.trackChoiceAt, upgrades: later, joinedBits: allJoined, byteFormed: true
+    bits: 5000, lifetimeBits: CONFIG.trackChoiceAt, upgrades: { ...later, nextBit: allBits }, byteFormed: true
   }));
   // A track is chosen; the hook (locked path, dark shimmer) plays straight away.
   Dev.addTool('Jump to', 'Hook', () => devJump({
-    bits: 20000, lifetimeBits: CONFIG.hookAt, upgrades: later, joinedBits: allJoined, byteFormed: true, track: track()
+    bits: 20000, lifetimeBits: CONFIG.hookAt, upgrades: { ...later, nextBit: allBits }, byteFormed: true, track: track()
   }));
   // The Megabit goal is met: the black hole draws close, ready to touch.
   Dev.addTool('Jump to', 'Black hole ready', () => devJump({
-    // 1,048,576 = the Megabit goal (achievements.js); it also meets any smaller unlock goal set in CONFIG.
-    bits: 50000, lifetimeBits: 1048576,
-    upgrades: later, joinedBits: allJoined, byteFormed: true, track: track(), hookSeen: true
+    // 8,388,608 = the Megabyte goal (achievements.js); it also meets any smaller unlock goal set in CONFIG.
+    bits: 500000, lifetimeBits: 8388608,
+    upgrades: { ...later, nextBit: allBits }, byteFormed: true, track: track(), hookSeen: true
   }));
 
   // Fall into the black hole now, from wherever you are (no confirmation), carrying whatever
@@ -698,6 +739,9 @@
     runHook(); // works out where the black hole sits
     beginFall();
   });
+
+  Dev.addTool('Boosters', 'Lightning now', () => { Boosters.force(view, 'lightning'); Sound.boosterAppear('lightning'); });
+  Dev.addTool('Boosters', 'Light pulse now', () => { Boosters.force(view, 'pulse'); Sound.boosterAppear('pulse'); });
 
   Dev.addTool('Save', 'Reset save', () => {
     if (!confirm('Wipe this save and start again from the dark?')) return;
@@ -743,7 +787,8 @@
     // realDt = real seconds since the last frame. Capped so a long pause (tab hidden) doesn't cause a jump.
     // dt = game seconds: real time multiplied by the dev tools' game speed (normally 1).
     // Everything that moves or counts in the game uses dt, so it all speeds up together.
-    const realDt = Math.min((now - last) / 1000, 0.1);
+    // (Never negative: the very first frame's timestamp can be a hair earlier than when the game started.)
+    const realDt = Math.max(0, Math.min((now - last) / 1000, 0.1));
     const dt = realDt * Dev.timeScale();
     last = now;
     view.time += dt;
@@ -769,6 +814,8 @@
     runCeremony();
     runChoice();
     runHook();
+    Boosters.update(view, dt, ready() && !view.choice, kind => Sound.boosterAppear(kind));
+    UI.showBoost(CONFIG.boosters.pulseMultiplier, Boosters.boostLeft(view.time), Boosters.boostTotal());
     view.track = state.track; // the resting pulse takes on the chosen track's colour
     view.labelsHidden = !!view.fall;
 

@@ -33,7 +33,8 @@ The game is called **A Meaningful Answer**, a nod to Asimov's "The Last Question
 
 - Open with `?dev=1` (remembered; `?dev=0` turns it off and resets the speed), by typing `devmode`, or with 5 quick taps in the top-left corner on a phone.
 - **Game speed** 1×–100×: one central time scale, `Dev.timeScale()`. A "TIME ×N" badge shows whenever it isn't 1×.
-- Helpers: add bits; jump to a milestone (second bit, constellation, byte, track fork, hook, black hole ready);
+- Helpers: add bits; jump to a milestone (second bit, constellation, bit 5, byte, track fork, hook, black hole ready);
+  make a booster appear now (lightning or light pulse);
   fall into the black hole now; reset the save. Add more with `Dev.addTool(group, label, run)` (the dev helpers
   section near the bottom of `main.js`). Jumps use `devJump()`, which builds the save for that moment from CONFIG totals and reloads.
 
@@ -79,13 +80,18 @@ The game is called **A Meaningful Answer**, a nod to Asimov's "The Last Question
 All seven steps exist. The milestone totals and costs in `js/config.js` were tuned with a simulator that plays the real
 rules (a steady player tapping about twice a second, buying whatever pays back fastest), so the times below hold for that
 player on either track. Faster or slower tappers move through it faster or slower (the early game leans on tapping).
-Real playtesting is still the final check. The black hole (Megabit) then opens at about 1 h 45 of active play.
+Real playtesting is still the final check. For that player: second bit ~10 min, bits 3–7 ~14–35 min (about 20 minutes,
+a bit every 3.5–6.5 min), byte ~37, fork ~41, hook ~58, and the black hole (Megabyte) at about 1 h 30–1 h 40.
+The simulator assumes the player catches 3 in 4 boosters.
 Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (see the README).
 
 1. **0–2 min:** darkness, "insufficient data" flickers in neon, then the first bit sparks to life.
 2. **2–10 min:** toggle loop, Amplifier (per-tap upgrade), Oscillator (auto-flipper, ticks like a muffled clock).
 3. **10–15 min:** Second Bit (an upgrade); calm pulse between them ("four possible states").
-4. **15–35 min:** bits 3–7 join on their own at lifetime-bit milestones, in a wandering constellation.
+4. **15–35 min:** bits 3–8 are bought with the **Next Bit** card (named Third Bit, Fourth Bit…, each ×1.5 the last,
+   each with its own one-line lesson). Every bit beyond the first makes all earning 25% more than before (`bitBonusEach`).
+   Mid-stretch moment at bit 5: the threads flare and stay brighter, a rising chord plays, and **Resonance** unlocks
+   (oscillators 25% faster per level). The bits sit in a wandering constellation.
 5. **35–40 min:** the 8th bit joins and the byte forms in a short ceremony ("256 possibilities").
 6. **40–55 min:** two paths of light open: the player picks Storage or Logic first.
    - Storage (keeping, idle): Latch, Register, Memory Cell.
@@ -95,10 +101,14 @@ Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (s
 ## Built beyond the first hour
 
 - **Offline progress:** oscillators and memory cells keep earning while the game is closed (capped, 8 hours by default; Storage extends it).
-- **Achievements:** seven, each with a one-line lesson, a toast and the chime (in `js/achievements.js`).
-- **Black hole reset (the soft prestige, "Deus Ex Machina"):** once the hook has appeared and the Megabit goal
-  (1,048,576 bits) is met in the current universe, the black hole draws close and can be touched. Falling in turns
-  this universe's bits into **Knowledge** (square root of lifetime bits ÷ 10,000), each point +10% to all earning, forever.
+- **Boosters** (`js/boosters.js`, numbers in `CONFIG.boosters`): things to tap while playing. **Lightning** (a crackling arc
+  with a zipping spark) gives a burst worth ~20 s of production; a **light pulse** (a breathing orb) gives ×7 production
+  for 30 s, with a timer under the counter. About one every 2 minutes, more often the faster you tap, never within
+  30 s of the last, one at a time; each vanishes after a few seconds. Crackle on appearing, zap on catching.
+- **Achievements:** eight, each with a one-line lesson, a toast and the chime (in `js/achievements.js`).
+- **Black hole reset (the soft prestige, "Deus Ex Machina"):** once the hook has appeared and the **Megabyte** goal
+  (8,388,608 bits) is met in the current universe, the black hole draws close and can be touched. Falling in turns
+  this universe's bits into **Knowledge** (square root of lifetime bits ÷ 80,000: about 10 at the Megabyte), each point +10% to all earning, forever.
   Only achievements, Knowledge and `universesCompleted` survive. The new universe opens with warm neon: "the data remembers" and the universe number.
 
 ## Bigger picture (don't build yet)
@@ -121,7 +131,8 @@ Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (s
 | `js/upgrades.js` | upgrade rules, and `Upgrades.step`: the single place that decides what one counting step earns |
 | `js/achievements.js` | achievements and their tests |
 | `js/audio.js` | every sound |
-| `js/render.js` | all canvas drawing |
+| `js/render.js` | all canvas drawing (except boosters) |
+| `js/boosters.js` | boosters: when they appear, catching them, the boost, and drawing them |
 | `js/ui.js` | counter, menu, notes, choice buttons, dialogs, sound controls |
 | `js/main.js` | game flow: taps, counting, births, the byte ceremony, the choice, the hook, the reset, the main loop |
 | `tools/balance-sim.js` | balance simulator (Node.js, not loaded by the game): plays the real rules, prints milestone times |
@@ -133,7 +144,10 @@ Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (s
 - Explain what you changed in simple terms at the end of each session.
 - Ask before adding new features outside the current target.
 - Keep the conventions the code relies on:
-  - All earning goes through `earn()` in `main.js` (that's where test speed and Knowledge apply).
+  - All earning goes through `earn()` in `main.js` (that's where test speed, Knowledge, the bits' bonus and a light
+    pulse's boost apply). Time away and lightning's own burst pass `noBoost`, so a boost never multiplies them.
+  - Card text with numbers reads them from config (`{bonus}`, `{pct:field}`, `{x:field}` in `Upgrades.text`), so
+    changing a number in config also changes what the card says.
   - Anything timed in the game uses game time (`dt` / `view.time` in the main loop) so the dev speed-up scales it.
     Only real-life things use real time: the player's tapping, how long notes stay readable, time away, autosaves.
     Sound waits that line up with animations go through `game()` in `audio.js`.

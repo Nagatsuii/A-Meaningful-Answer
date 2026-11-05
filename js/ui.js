@@ -62,7 +62,7 @@ const UI = (function () {
       const whole = Math.floor(state.bits);
       countEl.textContent = whole.toLocaleString();
       unitEl.textContent = whole === 1 ? 'bit' : 'bits';
-      const rate = Upgrades.bitsPerSecond(state) * TEST_SPEED * Upgrades.knowledgeMultiplier(state);
+      const rate = Upgrades.bitsPerSecond(state) * TEST_SPEED * Upgrades.productionMultiplier(state) * boostNow;
       const shown = rate < 10 ? Math.round(rate * 10) / 10 : Math.round(rate); // one decimal when small
       rateEl.textContent = rate > 0 ? `+${shown.toLocaleString()} per second` : '';
       const k = state.knowledge || 0;
@@ -82,7 +82,13 @@ const UI = (function () {
       anyRevealed = true;
       const cost = Upgrades.cost(state, id);
       const owned = Upgrades.owned(state, id);
-      button.querySelector('.upgrade-owned').textContent = owned > 0 ? `× ${owned}` : '';
+      // Next Bit changes its name, effect and lesson with each bit (Third Bit, Fourth Bit...).
+      button.querySelector('.upgrade-name').textContent = Upgrades.text(state, id, 'name');
+      button.querySelector('.upgrade-effect').textContent = Upgrades.text(state, id, 'effect');
+      button.querySelector('.upgrade-lesson').textContent = Upgrades.text(state, id, 'lesson');
+      // How many you own (not for Next Bit, whose name already says which bit is next).
+      const showOwned = owned > 0 && !CONFIG.upgrades[id].names;
+      button.querySelector('.upgrade-owned').textContent = showOwned ? `× ${owned}` : '';
       button.querySelector('.upgrade-cost').textContent = `${cost.toLocaleString()} bits`;
       button.disabled = !Upgrades.canAfford(state, id);
       if (!button.disabled) {
@@ -155,6 +161,23 @@ const UI = (function () {
       button.style.left = `${p.x}px`;
       button.style.top = `${p.y}px`;
     }
+  }
+
+  // ---------- the light pulse's boost timer ----------
+
+  const boostEl = document.getElementById('boost');
+  let boostNow = 1; // the boost multiplier right now, so the "per second" line includes it
+
+  // Show "×7 · 24s" with a bar that shrinks as the boost runs out; hide it when there's no boost.
+  function showBoost(multiplier, secondsLeft, totalSeconds) {
+    boostNow = secondsLeft > 0 ? multiplier : 1;
+    if (secondsLeft <= 0) {
+      boostEl.classList.remove('show');
+      return;
+    }
+    boostEl.classList.add('show');
+    boostEl.querySelector('.boost-text').textContent = `×${multiplier} production · ${Math.ceil(secondsLeft)}s`;
+    boostEl.querySelector('.boost-bar').style.width = `${(secondsLeft / totalSeconds) * 100}%`;
   }
 
   // ---------- sound controls ----------
@@ -240,5 +263,5 @@ const UI = (function () {
     document.addEventListener('keydown', onKey);
   }
 
-  return { build, refresh, skyCentre, showNote, showAway, showChoice, placeChoice, showAchievement, confirmFall };
+  return { build, refresh, skyCentre, showNote, showAway, showChoice, placeChoice, showAchievement, confirmFall, showBoost };
 })();

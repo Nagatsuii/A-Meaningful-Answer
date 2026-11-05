@@ -11,7 +11,6 @@ const Save = {
       bits: 0,        // the bit counter (our currency)
       lifetimeBits: 0, // every bit ever earned, even ones spent; used to reveal upgrades
       upgrades: {},   // how many of each upgrade you own, e.g. { amplifier: 2 }
-      joinedBits: 0,  // how many constellation bits (3rd onward) have joined by themselves
       byteFormed: false, // have all eight bits come together as a byte?
       track: null,    // which path was chosen first: 'storage', 'logic', or null (not yet)
       hookSeen: false, // has the locked path and the distant dark shimmer appeared yet?
