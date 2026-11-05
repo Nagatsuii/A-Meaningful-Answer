@@ -136,11 +136,15 @@ Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (s
 | `js/ui.js` | counter, menu, notes, choice buttons, dialogs, sound controls |
 | `js/main.js` | game flow: taps, counting, births, the byte ceremony, the choice, the hook, the reset, the main loop |
 | `tools/balance-sim.js` | balance simulator (Node.js, not loaded by the game): plays the real rules, prints milestone times |
+| `tests/` | browser tests (Node.js + Playwright): `node tests/run.js [word]`; one suite per feature in `tests/suites/` |
 
 ## How to work in this repo
 
 - Build in small, playable steps; every change should leave the game runnable.
 - After changes, open the game in a browser and check it works before finishing — on both desktop and phone sizes.
+  Run the browser tests (`node tests/run.js`, ~5 min; or a single suite) and keep them passing. When adding a feature,
+  add or extend a suite. Tests read numbers from the game (CONFIG, Upgrades) instead of typing them in, so balance
+  changes don't break them; keep it that way.
 - Explain what you changed in simple terms at the end of each session.
 - Ask before adding new features outside the current target.
 - Keep the conventions the code relies on:

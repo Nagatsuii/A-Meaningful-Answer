@@ -53,6 +53,33 @@ That prints a table for both tracks at 1, 2 and 4 taps a second. Other options: 
 and `--try trial.json` to test numbers without editing `config.js` (a trial file lists only what changes,
 e.g. `{ "hookAt": 250000 }`). The comments at the top of the file explain the rest.
 
+## Running the tests
+
+`tests/` holds browser tests that play the real game on desktop- and phone-sized screens and check every
+feature: the opening, upgrades, binary counting, the bits and the byte, time away, both tracks, the hook and
+black hole, boosters, sound (including the mix order), the dev tools and the address switches.
+They read prices and milestones from the game, so rebalancing `config.js` doesn't break them.
+
+They need Node.js and Playwright (the game doesn't). Once, from the repo folder:
+
+```bash
+npm install playwright
+```
+
+```bash
+npx playwright install chromium
+```
+
+Then run them all (about 5 minutes), or only suites whose file name contains a word:
+
+```bash
+node tests/run.js
+```
+
+```bash
+node tests/run.js boosters
+```
+
 ## Files
 
 - `index.html` — the page
@@ -64,6 +91,7 @@ e.g. `{ "hookAt": 250000 }`). The comments at the top of the file explain the re
 - `js/achievements.js` — the achievements and what earns each one
 - `js/audio.js` — every sound, made in code with the Web Audio API (no sound files)
 - `tools/balance-sim.js` — the balance simulator (not loaded by the game)
+- `tests/` — the browser tests (`run.js`, shared `helpers.js`, one file per feature in `suites/`)
 - `js/render.js` — draws the sky, the bit and its effects on the canvas
 - `js/ui.js` — the counter and the upgrade menu
 - `js/main.js` — starts the game, handles taps, runs the animation loop
