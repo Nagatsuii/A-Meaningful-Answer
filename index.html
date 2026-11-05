@@ -16,6 +16,22 @@
   <canvas id="sky" aria-label="A dark sky. Tap the faint glow in the middle."></canvas>
 
   <!-- The bit counter sits on top of the canvas as normal text, so it stays crisp -->
+  <!-- The opening: in pitch black, before the first spark, the last words of the previous universe -->
+  <div id="opening" aria-hidden="true"><span>insufficient data</span></div>
+
+  <!-- Sound: mute button and volume slider -->
+  <div id="sound-controls">
+    <button id="mute" type="button" aria-pressed="false" aria-label="Mute sound">♪</button>
+    <input id="volume" type="range" min="0" max="100" value="70" aria-label="Volume">
+  </div>
+
+  <!-- Achievement announcements -->
+  <div id="achievement" role="status">
+    <span class="ach-label">Achievement</span>
+    <span id="ach-name"></span>
+    <span id="ach-text"></span>
+  </div>
+
   <!-- Only shown when testing with ?speed= in the address -->
   <div id="test-badge" hidden></div>
 
@@ -54,6 +70,8 @@
   <script src="js/config.js"></script>
   <script src="js/save.js"></script>
   <script src="js/upgrades.js"></script>
+  <script src="js/achievements.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/render.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>

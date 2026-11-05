@@ -168,10 +168,14 @@
         state.value = result.next;
         earned += result.gain;
         lastStepCarried = result.carried;
+        if (result.carried) state.stats.carries++;
+        if (result.next === 0 && size === 256) state.stats.wraps++; // the byte rolled past 255
       }
     } else {
       // For huge numbers of steps (like coming back after hours away) use the average instead.
       earned = steps * Upgrades.averageStepEarning(state, perFlip, source);
+      state.stats.carries += Math.floor(steps / 2);
+      if (size === 256) state.stats.wraps += Math.floor((state.value + steps) / 256);
       state.value = (state.value + steps) % size;
     }
     return earned;
@@ -180,12 +184,14 @@
   function tap() {
     // The very first tap: the bit is born. This tap doesn't add to the counter.
     if (!state.sparked) {
+      if (view.time < CONFIG.darknessSeconds) return; // let the opening finish first
       state.sparked = true;
       state.value = 1;
       const star = view.stars[0];
       star.shown = star.pending = 1;
       star.brightness = 1;
       view.birth = { index: 0, start: view.time, ignited: false };
+      Sound.bitBorn(0, CONFIG.birthSeconds * 0.3); // a note at the moment it ignites
       Save.save(state);
       return;
     }
@@ -194,16 +200,21 @@
     if (!ready()) return;
 
     // Every tap after that: count up by one, and earn bits for every bit that flipped.
+    state.stats.taps++;
     earn(countUp(1, Upgrades.bitsPerTap(state), 'tap'));
     syncStars();
     showBranch();
     Render.ripple(view, 0, 0.16, 46); // a soft, quiet ring
+    // A soft tick that climbs in pitch during a fast streak; at the top, a burst of sparks.
+    if (Sound.tap()) Render.sparkle(view, 0);
     UI.refresh(state, true);
     Save.save(state);
   }
 
   function buy(id) {
+    const cost = Upgrades.cost(state, id);
     if (!ready() || !Upgrades.buy(state, id)) return;
+    Sound.purchase(cost); // a zap of current; pricier upgrades crackle longer
     if (id === 'secondBit') {
       addBit();
     } else {
@@ -221,6 +232,7 @@
     view.stars[index].x = spot.x;
     view.stars[index].y = spot.y;
     view.birth = { index: index, start: view.time, ignited: false };
+    Sound.bitBorn(index, CONFIG.birthSeconds * 0.3); // each new bit rings its own note as it ignites
   }
 
   // Bits 3 to 7 join by themselves once enough bits have been earned (see CONFIG.joinAt).
@@ -234,6 +246,10 @@
     } else if (Upgrades.bitCount(state) >= 8 && !state.byteFormed) {
       // All eight bits are here: the byte forms.
       view.ceremony = { start: view.time + CONFIG.byteDelaySeconds, swept: [], noted: false };
+      // Each bit rings as the wave passes it, then all eight bloom into a chord as the note appears.
+      const n = view.stars.length;
+      const waves = view.stars.map((s, i) => CONFIG.byteDelaySeconds + byteWaveTime(i, n));
+      Sound.byteChord(waves, CONFIG.byteDelaySeconds + CONFIG.byteGatherSeconds + CONFIG.byteSweepSeconds * 0.7);
     }
   }
 
@@ -299,6 +315,7 @@
         `${'0'.repeat(n)}\u00a0to\u00a0${'1'.repeat(n)}`, 10);
     }
     if (n >= 2) view.nextAmbient = view.time + 0.6; // a resting pulse follows straight after
+    if (n === 2) Sound.firstPulse(0.6, CONFIG.ambientPulseTravel); // the very first pulse between bits sings
     UI.refresh(state, true);
   }
 
@@ -504,7 +521,7 @@
   // Space or Enter taps too, for keyboard players.
   // (Not when a menu button has focus, so Space/Enter can press that button instead.)
   window.addEventListener('keydown', function (event) {
-    if (event.target.closest && event.target.closest('button')) return;
+    if (event.target.closest && event.target.closest('button, input')) return;
     if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) {
       event.preventDefault();
       tap();
@@ -517,8 +534,19 @@
     Save.save(state);
   }
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden') saveNow();
+    if (document.visibilityState === 'hidden') {
+      saveNow();
+      Sound.suspend();
+    } else {
+      Sound.resume();
+    }
   });
+
+  // Browsers only allow sound after the player interacts, so wake the audio on the very first
+  // touch, click or key press anywhere on the page.
+  for (const kind of ['pointerdown', 'touchend', 'keydown']) {
+    window.addEventListener(kind, Sound.unlock, { capture: true });
+  }
   window.addEventListener('pagehide', saveNow);
 
   // ---------- start up ----------
@@ -528,8 +556,12 @@
   // One star per bit (before the first tap there's one, waiting to be born).
   for (let i = 0; i < Upgrades.bitCount(state); i++) view.stars.push(makeStar(i));
 
-  UI.build(buy, choose);
+  UI.build(buy, choose, () => Sound.affordable());
   UI.refresh(state, ready());
+  Achievements.check(state); // anything already earned in an older save counts, without a fanfare
+
+  // A brand-new game opens in pitch black with the last words of the previous universe.
+  if (!state.sparked) document.getElementById('opening').classList.add('play');
   window.addEventListener('resize', resize);
   resize();
 
@@ -564,6 +596,12 @@
     runChoice();
     runHook();
     view.track = state.track; // the resting pulse takes on the chosen track's colour
+
+    // Sound: one drone note per bit, the clock ticking with the oscillators, and the drone's tone
+    // (cold in the first universe, warm after a black-hole reset).
+    Sound.setBits(state.sparked ? view.stars.length : 0);
+    Sound.setWarm(state.universesCompleted > 0 || TEST_WARM);
+    Sound.update(dt, ready() ? Upgrades.flipsPerSecond(state) : 0);
     view.showRule = Upgrades.owned(state, 'ifThenElse') > 0;
 
     // Refresh the counter and menu a few times a second (often enough to look live, cheap on phones).
@@ -571,6 +609,11 @@
     if (uiTimer >= 0.2 && ready()) {
       uiTimer = 0;
       UI.refresh(state, true);
+      // Newly earned achievements: announce each one with the signature chime.
+      for (const a of Achievements.check(state)) {
+        UI.showAchievement(a, () => Sound.achievement());
+        Save.save(state);
+      }
     }
 
     // Save every few seconds while oscillators are earning.

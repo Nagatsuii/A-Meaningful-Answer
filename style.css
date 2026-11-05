@@ -76,6 +76,157 @@ body {
   opacity: 1;
 }
 
+/* ---------- The opening: "insufficient data" in neon ---------- */
+/* Bold tube letters on a faint acrylic panel. They flicker on like a neon sign, hold, then fade. */
+
+#opening {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transform: translateY(-12vh);        /* above the spot where the first bit will spark */
+}
+
+#opening span {
+  padding: 0.45em 0.9em;
+  font-family: "Arial Rounded MT Bold", "Nunito", "Varela Round", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: clamp(24px, 7vw, 52px);
+  letter-spacing: 0.04em;
+  color: #f2fbff;
+  /* layers of glow: the white-hot tube, then cooler blue light spilling around it */
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 6px #c8f1ff,
+    0 0 14px #7fd8ff,
+    0 0 28px #3aa8ff,
+    0 0 56px #2a6dff;
+  /* the acrylic backing panel */
+  background: rgba(140, 190, 255, 0.035);
+  border: 1px solid rgba(170, 210, 255, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 0 40px rgba(80, 150, 255, 0.08), inset 0 0 24px rgba(120, 180, 255, 0.05);
+  opacity: 0;
+}
+
+#opening.play span {
+  animation: neon-flicker 5.6s linear forwards;
+}
+
+/* Off, a few stuttering flashes as the tubes catch, steady, one last stutter, then a slow fade. */
+@keyframes neon-flicker {
+  0%, 14%  { opacity: 0; }
+  15%      { opacity: 0.85; }
+  16%      { opacity: 0.1; }
+  18%      { opacity: 0.95; }
+  19%      { opacity: 0.25; }
+  22%      { opacity: 1; }
+  62%      { opacity: 1; }
+  63%      { opacity: 0.4; }
+  64.5%    { opacity: 1; }
+  74%      { opacity: 1; }
+  100%     { opacity: 0; }
+}
+
+@keyframes neon-fade {
+  0%, 15% { opacity: 0; }
+  30%, 74% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---------- Sound controls (top right) ---------- */
+
+#sound-controls {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.45;
+  transition: opacity 0.3s ease, right 1s ease;
+}
+
+#sound-controls:hover,
+#sound-controls:focus-within {
+  opacity: 0.9;
+}
+
+#mute {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: #cfd8ff;
+  background: none;
+  border: 1px solid rgba(150, 180, 255, 0.3);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+#mute.muted {
+  color: rgba(207, 216, 255, 0.35);
+  text-decoration: line-through;
+}
+
+#volume {
+  width: 80px;
+  accent-color: #9fb4ff;
+}
+
+/* ---------- Achievement announcement ---------- */
+
+#achievement {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 64px); /* above the phone menu tab */
+  margin: 0 auto;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+  padding: 10px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  text-align: center;
+  background: rgba(10, 13, 28, 0.85);
+  border: 1px solid rgba(255, 214, 150, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 0 24px rgba(255, 214, 150, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+#achievement.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ach-label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 214, 150, 0.7);
+}
+
+#ach-name {
+  font-size: 15px;
+  color: #fff3dc;
+}
+
+#ach-text {
+  font-size: 11px;
+  color: rgba(207, 216, 255, 0.6);
+}
+
 /* The testing badge (only shown with ?speed= in the address). Top left, out of the way. */
 #test-badge {
   position: fixed;
@@ -347,13 +498,32 @@ body {
   body.menu-revealed #counter {
     right: 300px;
   }
+
+  /* ...and keep the sound controls and achievements out from under the menu too. */
+  body.menu-revealed #sound-controls {
+    right: 312px;
+  }
+
+  body.menu-revealed #achievement {
+    right: 300px;
+  }
+
+  #achievement {
+    bottom: 28px;
+  }
 }
 
 /* People who ask their device for less motion get instant changes instead. */
 @media (prefers-reduced-motion: reduce) {
+  /* No flicker: the neon words simply fade in and out. */
+  #opening.play span {
+    animation: neon-fade 5.6s ease forwards;
+  }
+
   #counter,
   #panel,
   #note,
+  #achievement,
   #choice .path {
     transition: none;
   }

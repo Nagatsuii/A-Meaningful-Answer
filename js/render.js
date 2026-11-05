@@ -624,5 +624,11 @@ const Render = (function () {
     drawLabels(ctx, view);
   }
 
-  return { update, draw, ripple, sendPulse };
+  // A small spray of sparks from a star (the top of a fast click streak).
+  function sparkle(view, starIndex) {
+    const star = view.stars[starIndex];
+    if (star) burst(view, star.x, star.y, 12);
+  }
+
+  return { update, draw, ripple, sendPulse, sparkle };
 })();

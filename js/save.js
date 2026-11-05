@@ -15,6 +15,11 @@ const Save = {
       byteFormed: false, // have all eight bits come together as a byte?
       track: null,    // which path was chosen first: 'storage', 'logic', or null (not yet)
       hookSeen: false, // has the locked path and the distant dark shimmer appeared yet?
+      achievements: {}, // achievements earned, e.g. { carry: true }
+      stats: { taps: 0, carries: 0, wraps: 0 }, // counts that some achievements look at
+      // How many universes have ended in a black-hole reset. The reset isn't built yet; when it is,
+      // it must carry this number over into the new game. Above 0, the drone turns warm.
+      universesCompleted: 0,
       lastSeen: null  // the clock time (in milliseconds) the game was last running
     };
   },

@@ -15,6 +15,9 @@ const UI = (function () {
   let noteTimer = null;
 
   const buttons = {}; // one button per upgrade, found by id
+  const cued = new Set(); // upgrades that have already had their "now affordable" cue
+  let firstRefresh = true;
+  let onAffordable = null;
 
   // While testing at a higher speed, show a small badge so it's never mistaken for normal play.
   if (TEST_SPEED > 1) {
@@ -24,8 +27,11 @@ const UI = (function () {
   }
 
   // Build the menu once. `onBuy(id)` is called when an upgrade is pressed,
-  // `onChoose(track)` when one of the two paths is picked.
-  function build(onBuy, onChoose) {
+  // `onChoose(track)` when one of the two paths is picked, and `whenAffordable()` the first time
+  // each upgrade becomes affordable (for a little sound cue).
+  function build(onBuy, onChoose, whenAffordable) {
+    onAffordable = whenAffordable;
+    buildSoundControls();
     for (const id of Upgrades.ids) {
       const u = CONFIG.upgrades[id];
       const button = document.createElement('button');
@@ -81,8 +87,16 @@ const UI = (function () {
       button.querySelector('.upgrade-owned').textContent = owned > 0 ? `× ${owned}` : '';
       button.querySelector('.upgrade-cost').textContent = `${cost.toLocaleString()} bits`;
       button.disabled = !Upgrades.canAfford(state, id);
-      if (!button.disabled) anyAffordable = true;
+      if (!button.disabled) {
+        anyAffordable = true;
+        // The first time an upgrade becomes affordable, give a tiny cue (not for ones affordable at load).
+        if (!cued.has(id)) {
+          cued.add(id);
+          if (!firstRefresh && onAffordable) onAffordable();
+        }
+      }
     }
+    if (showCounter) firstRefresh = false;
 
     // The menu itself fades in when its first upgrade is revealed.
     panel.classList.toggle('revealed', anyRevealed);
@@ -145,5 +159,59 @@ const UI = (function () {
     }
   }
 
-  return { build, refresh, skyCentre, showNote, showAway, showChoice, placeChoice };
+  // ---------- sound controls ----------
+
+  // The mute button and volume slider in the top corner. Settings are remembered between visits.
+  function buildSoundControls() {
+    const mute = document.getElementById('mute');
+    const volume = document.getElementById('volume');
+    const s = Sound.getSettings();
+    volume.value = Math.round(s.volume * 100);
+    const showMuted = muted => {
+      mute.classList.toggle('muted', muted);
+      mute.setAttribute('aria-pressed', String(muted));
+      mute.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+    };
+    showMuted(s.muted);
+    mute.addEventListener('click', () => {
+      const muted = !Sound.getSettings().muted;
+      Sound.setMuted(muted);
+      showMuted(muted);
+    });
+    volume.addEventListener('input', () => {
+      Sound.setVolume(volume.value / 100);
+      if (Sound.getSettings().muted && volume.value > 0) { // moving the slider unmutes
+        Sound.setMuted(false);
+        showMuted(false);
+      }
+    });
+  }
+
+  // ---------- achievements ----------
+
+  const achEl = document.getElementById('achievement');
+  const achQueue = [];
+  let achShowing = false;
+
+  // Announce an achievement. If several arrive at once, they're shown one after another.
+  function showAchievement(a, onShow) {
+    achQueue.push({ a: a, onShow: onShow });
+    if (!achShowing) nextAchievement();
+  }
+
+  function nextAchievement() {
+    const item = achQueue.shift();
+    if (!item) { achShowing = false; return; }
+    achShowing = true;
+    document.getElementById('ach-name').textContent = item.a.name;
+    document.getElementById('ach-text').textContent = item.a.text;
+    achEl.classList.add('show');
+    if (item.onShow) item.onShow();
+    setTimeout(() => {
+      achEl.classList.remove('show');
+      setTimeout(nextAchievement, 900);
+    }, 4500);
+  }
+
+  return { build, refresh, skyCentre, showNote, showAway, showChoice, placeChoice, showAchievement };
 })();

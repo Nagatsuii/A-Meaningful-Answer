@@ -9,7 +9,7 @@ const CONFIG = {
   saveKey: 'a-meaningful-answer-save-v1', // name of the save slot in the browser's localStorage
 
   // --- The faint glow before the first tap ---
-  darknessSeconds: 2,        // how long the screen stays fully dark before the glow fades in
+  darknessSeconds: 6,        // how long the screen stays dark (while "insufficient data" flickers) before the glow fades in
   hintPulseSeconds: 4,       // one slow "breath" of the glow, in seconds
   hintRadius: 46,            // size of the glow, in screen pixels
 
@@ -186,6 +186,13 @@ const CONFIG = {
   offlineMessageMinSeconds: 60, // only say "while you were away" after at least this long
   offlineMessageSeconds: 9,    // how long that note stays on screen
 
+  // --- Sound (the sounds themselves, and their loudness, are in audio.js) ---
+  audio: {
+    defaultVolume: 0.7,        // starting volume, 0 to 1 (players can change it with the slider)
+    streakTaps: 16,            // fast taps needed to climb to the top of the click streak
+    streakGapSeconds: 0.4      // taps closer together than this count as a streak
+  },
+
   // --- Testing ---
   testSpeedMax: 1000           // the highest ?speed= allowed (see TEST_SPEED below)
 };
@@ -199,3 +206,6 @@ const TEST_SPEED = (function () {
   if (!isFinite(asked) || asked <= 1) return 1;
   return Math.min(asked, CONFIG.testSpeedMax);
 })();
+
+// Hidden switch for hearing the warm drone before the black-hole reset exists: add ?warm to the address.
+const TEST_WARM = new URLSearchParams(location.search).has('warm');
