@@ -10,9 +10,13 @@
   const ctx = canvas.getContext('2d');
 
   // Adding ?reset to the address wipes the save, handy while testing.
-  if (new URLSearchParams(location.search).has('reset')) {
+  const params = new URLSearchParams(location.search);
+  if (params.has('reset')) {
     Save.clear();
-    history.replaceState(null, '', location.pathname); // tidy the address bar
+    // Tidy the address bar, keeping anything else (like ?speed=20) so a reload doesn't reset again.
+    params.delete('reset');
+    const rest = params.toString();
+    history.replaceState(null, '', location.pathname + (rest ? '?' + rest : ''));
   }
 
   // `state` is the game itself, and gets saved.
@@ -143,9 +147,13 @@
 
   // ---------- counting and earning ----------
 
+  // Add bits to the counter. Every way of earning comes through here, so the testing
+  // speed-up (TEST_SPEED, from ?speed= in the address) only needs applying once. Returns what was added.
   function earn(amount) {
-    state.bits += amount;
-    state.lifetimeBits += amount;
+    const added = amount * TEST_SPEED;
+    state.bits += added;
+    state.lifetimeBits += added;
+    return added;
   }
 
   // Count up by `steps` in binary, and work out what that earns.
@@ -337,11 +345,11 @@
     if (steps > 0) earned += countUp(steps, CONFIG.upgrades.oscillator.bitsPerFlip, 'osc');
     if (earned <= 0) return;
 
-    earn(earned);
+    const added = earn(earned);
     syncStars(); // the bits show wherever all that counting left them
 
     if (secondsAway >= CONFIG.offlineMessageMinSeconds) {
-      UI.showAway(secondsAway, Math.floor(earned), secondsAway > maxSeconds, hours, trickle > 0);
+      UI.showAway(secondsAway, Math.floor(added), secondsAway > maxSeconds, hours, trickle > 0);
     }
     UI.refresh(state, true);
     Save.save(state);

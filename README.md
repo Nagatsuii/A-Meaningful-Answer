@@ -16,6 +16,15 @@ then visit http://localhost:8000.
 
 Add `?reset` to the address (for example `http://localhost:8000/?reset`) to wipe your save and start from the dark again.
 
+## Testing faster
+
+Add `?speed=20` to the address to make every bit earned count 20 times over (any number up to 1000).
+A small **TEST ×20** badge shows while it's on. Combine it with a fresh start: `?reset&speed=50`.
+Progress made at test speed is saved like normal progress, so use `?reset` afterwards to start clean.
+
+Rough guide to reach each stage quickly at `?speed=50`: the second bit and the constellation come within
+a few minutes of tapping and oscillators; the byte, the Storage/Logic choice and the hook follow soon after.
+
 ## Files
 
 - `index.html` — the page

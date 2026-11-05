@@ -184,5 +184,18 @@ const CONFIG = {
   offlineMaxHours: 8,          // time away beyond this doesn't count, so it's worth coming back
   offlineEfficiency: 1,        // share of normal speed earned while away (0.5 = half speed)
   offlineMessageMinSeconds: 60, // only say "while you were away" after at least this long
-  offlineMessageSeconds: 9     // how long that note stays on screen
+  offlineMessageSeconds: 9,    // how long that note stays on screen
+
+  // --- Testing ---
+  testSpeedMax: 1000           // the highest ?speed= allowed (see TEST_SPEED below)
 };
+
+// Hidden speed-up switch for testing. Add ?speed=20 to the page address and every bit earned
+// (taps, oscillators, memory cells, time away) counts 20 times over. Leave it off for normal play.
+// It can be combined with a fresh start: ?reset&speed=50
+// Note: progress made at test speed is saved like normal progress; use ?reset to start clean again.
+const TEST_SPEED = (function () {
+  const asked = Number(new URLSearchParams(location.search).get('speed'));
+  if (!isFinite(asked) || asked <= 1) return 1;
+  return Math.min(asked, CONFIG.testSpeedMax);
+})();

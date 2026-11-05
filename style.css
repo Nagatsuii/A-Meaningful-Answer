@@ -76,6 +76,25 @@ body {
   opacity: 1;
 }
 
+/* The testing badge (only shown with ?speed= in the address). Top left, out of the way. */
+#test-badge {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 12px;
+  padding: 3px 8px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 214, 150, 0.85);
+  border: 1px solid rgba(255, 214, 150, 0.4);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+#test-badge[hidden] {
+  display: none;
+}
+
 /* ---------- The upgrade menu ---------- */
 /* Phones first: a sheet along the bottom. Only its tab peeks out until you open it. */
 

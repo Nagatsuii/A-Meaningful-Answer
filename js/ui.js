@@ -16,6 +16,13 @@ const UI = (function () {
 
   const buttons = {}; // one button per upgrade, found by id
 
+  // While testing at a higher speed, show a small badge so it's never mistaken for normal play.
+  if (TEST_SPEED > 1) {
+    const badge = document.getElementById('test-badge');
+    badge.textContent = `TEST ×${TEST_SPEED}`;
+    badge.hidden = false;
+  }
+
   // Build the menu once. `onBuy(id)` is called when an upgrade is pressed,
   // `onChoose(track)` when one of the two paths is picked.
   function build(onBuy, onChoose) {
@@ -55,7 +62,7 @@ const UI = (function () {
       const whole = Math.floor(state.bits);
       countEl.textContent = whole.toLocaleString();
       unitEl.textContent = whole === 1 ? 'bit' : 'bits';
-      const rate = Upgrades.bitsPerSecond(state);
+      const rate = Upgrades.bitsPerSecond(state) * TEST_SPEED;
       const shown = rate < 10 ? Math.round(rate * 10) / 10 : Math.round(rate); // one decimal when small
       rateEl.textContent = rate > 0 ? `+${shown.toLocaleString()} per second` : '';
       counterEl.classList.add('visible');
