@@ -640,6 +640,65 @@
   Dev.addTool('Bits', '+1,000', () => devAddBits(1000));
   Dev.addTool('Bits', '+100,000', () => devAddBits(100000));
   Dev.addTool('Bits', '+1,000,000', () => devAddBits(1000000));
+  // Jump to just as a milestone happens: the save is set up as if you'd played to that point, then the page
+  // reloads and the milestone plays out on screen. Knowledge, achievements and the universe count are kept,
+  // so jumps work in later universes too. Totals come from CONFIG, so they follow any rebalancing.
+  function devJump(fields) {
+    const next = Save.fresh();
+    next.knowledge = state.knowledge;
+    next.achievements = state.achievements;
+    next.universesCompleted = state.universesCompleted;
+    next.stats = state.stats;
+    Object.assign(next, { sparked: true, value: 0, lastSeen: Date.now() }, fields);
+    for (const key of Object.keys(state)) delete state[key];
+    Object.assign(state, next);
+    Save.save(state);
+    location.reload();
+  }
+
+  // Upgrades a player would plausibly own at each stage.
+  const early = { amplifier: 3, oscillator: 3 };
+  const later = { amplifier: 6, oscillator: 8, secondBit: 1 };
+  const allJoined = CONFIG.joinAt.length;                  // bits 3 to 8
+  const track = () => state.track || 'storage';           // keep the chosen track if there is one
+
+  // Second Bit: affordable, ready to buy (buying it plays the birth).
+  Dev.addTool('Jump to', 'Second bit', () => devJump({
+    bits: CONFIG.upgrades.secondBit.baseCost, lifetimeBits: CONFIG.upgrades.secondBit.baseCost, upgrades: early
+  }));
+  // The 3rd bit joins straight away, starting the constellation.
+  Dev.addTool('Jump to', 'Constellation', () => devJump({
+    bits: 300, lifetimeBits: CONFIG.joinAt[0], upgrades: later
+  }));
+  // Seven bits; the 8th joins straight away and the byte forms.
+  Dev.addTool('Jump to', 'Byte', () => devJump({
+    bits: 2000, lifetimeBits: CONFIG.joinAt[allJoined - 1], upgrades: later, joinedBits: allJoined - 1
+  }));
+  // The byte is formed; the Storage / Logic paths open straight away.
+  Dev.addTool('Jump to', 'Track fork', () => devJump({
+    bits: 5000, lifetimeBits: CONFIG.trackChoiceAt, upgrades: later, joinedBits: allJoined, byteFormed: true
+  }));
+  // A track is chosen; the hook (locked path, dark shimmer) plays straight away.
+  Dev.addTool('Jump to', 'Hook', () => devJump({
+    bits: 20000, lifetimeBits: CONFIG.hookAt, upgrades: later, joinedBits: allJoined, byteFormed: true, track: track()
+  }));
+  // The Megabit goal is met: the black hole draws close, ready to touch.
+  Dev.addTool('Jump to', 'Black hole ready', () => devJump({
+    // 1,048,576 = the Megabit goal (achievements.js); it also meets any smaller unlock goal set in CONFIG.
+    bits: 50000, lifetimeBits: 1048576,
+    upgrades: later, joinedBits: allJoined, byteFormed: true, track: track(), hookSeen: true
+  }));
+
+  // Fall into the black hole now, from wherever you are (no confirmation), carrying whatever
+  // Knowledge this universe has earned so far.
+  Dev.addTool('Black hole', 'Fall in now', () => {
+    if (!state.sparked || view.fall) return;
+    Dev.close();
+    if (!view.hook) view.hook = { start: view.time - 100, quick: true, noted: true, closeNoted: true };
+    runHook(); // works out where the black hole sits
+    beginFall();
+  });
+
   Dev.addTool('Save', 'Reset save', () => {
     if (!confirm('Wipe this save and start again from the dark?')) return;
     // Replace the game completely (as the black-hole reset does), so saving as the page closes can't bring it back.

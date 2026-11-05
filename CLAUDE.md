@@ -33,8 +33,9 @@ The game is called **A Meaningful Answer**, a nod to Asimov's "The Last Question
 
 - Open with `?dev=1` (remembered; `?dev=0` turns it off and resets the speed), by typing `devmode`, or with 5 quick taps in the top-left corner on a phone.
 - **Game speed** 1×–100×: one central time scale, `Dev.timeScale()`. A "TIME ×N" badge shows whenever it isn't 1×.
-- Helpers: add bits, reset the save. Add more with `Dev.addTool(group, label, run)` (see the bottom of `main.js`),
-  e.g. jumping to milestones or triggering a black-hole reset.
+- Helpers: add bits; jump to a milestone (second bit, constellation, byte, track fork, hook, black hole ready);
+  fall into the black hole now; reset the save. Add more with `Dev.addTool(group, label, run)` (the dev helpers
+  section near the bottom of `main.js`). Jumps use `devJump()`, which builds the save for that moment from CONFIG totals and reloads.
 
 ### Testing switches (add to the page address)
 
