@@ -140,7 +140,7 @@ const Render = (function () {
 
     // Once there are two or more bits, a quiet pulse drifts between them now and then,
     // back and forth: information always moving, even at rest.
-    const resting = view.stars.length >= 2 && view.birth === null && view.ceremony === null;
+    const resting = view.stars.length >= 2 && view.birth === null && view.ceremony === null && !view.labelsHidden;
     if (resting && view.time >= view.nextAmbient) {
       view.nextAmbient = view.time + CONFIG.ambientPulseSeconds;
       view.ambientForward = !view.ambientForward;
@@ -291,6 +291,7 @@ const Render = (function () {
   function drawByte(ctx, view, state) {
     const c = view.ceremony;
     if (!state.byteFormed && !c) return;
+    if (view.fall) return; // the byte comes apart as its stars fall into the dark
     const t = c ? view.time - c.start : Infinity; // seconds into the ceremony (or long finished)
     if (t < 0) return;
 
@@ -439,7 +440,9 @@ const Render = (function () {
   function drawBlackHole(ctx, view, visible) {
     if (visible <= 0) return;
     const { x, y } = view.hookPoints.hole;
-    const r = CONFIG.blackHoleRadius;
+    // It grows as it draws closer, and swells further while the stars fall in.
+    const falling = view.fall ? clamp01((view.time - view.fall.start) / CONFIG.knowledge.fallSeconds) : 0;
+    const r = CONFIG.blackHoleRadius * (1 + 0.8 * view.holeNear + 1.2 * falling);
     const ringColour = [200, 170, 255];
 
     // A very faint haze around it.
@@ -452,7 +455,8 @@ const Render = (function () {
       const a0 = (i / pieces) * Math.PI * 2;
       const a1 = ((i + 1) / pieces) * Math.PI * 2;
       const ripple = 0.5 + 0.5 * Math.sin(a0 * 3 + view.time * (calm ? 0.3 : 0.8));
-      ctx.strokeStyle = rgba(ringColour, (0.08 + 0.3 * ripple) * visible);
+      const bright = 1 + 0.5 * view.holeNear + falling; // brighter once it's close
+      ctx.strokeStyle = rgba(ringColour, (0.08 + 0.3 * ripple) * visible * bright);
       ctx.beginPath();
       ctx.arc(x, y, r * 1.45, a0, a1);
       ctx.stroke();
@@ -613,7 +617,7 @@ const Render = (function () {
       const appear = clamp01(view.time / 1.2);
       for (let i = 0; i < living; i++) {
         const s = view.stars[i];
-        drawStar(ctx, view, s.x, s.y, s.brightness, 1, appear);
+        drawStar(ctx, view, s.x, s.y, s.brightness, 1, appear * view.starFade);
       }
       if (view.birth) drawBirth(ctx, view);
     }
@@ -622,6 +626,14 @@ const Render = (function () {
     drawParticles(ctx, view);
     ctx.globalCompositeOperation = 'source-over';
     drawLabels(ctx, view);
+
+    // Falling into the black hole: after the stars are gone, the whole sky goes dark.
+    if (view.fall) {
+      const t = (view.time - view.fall.start) / CONFIG.knowledge.fallSeconds;
+      const dark = clamp01((t - 0.75) / 0.35);
+      ctx.fillStyle = `rgba(0, 0, 0, ${dark})`;
+      ctx.fillRect(0, 0, view.width, view.height);
+    }
   }
 
   // A small spray of sparks from a star (the top of a fast click streak).

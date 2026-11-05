@@ -52,7 +52,10 @@
     track: state.track,
     branch: null,     // { which: 'then' or 'else', at } — the IF · THEN · ELSE branch that last ran
     hook: null,       // { start, quick, noted } once the hook has begun
-    hookPoints: null  // where the locked doorway and the black hole sit
+    hookPoints: null, // where the locked doorway and the black hole sit
+    holeNear: 0,      // 0 = the black hole is far away; 1 = close enough to fall into
+    fall: null,       // { start, origins } while the stars spiral into the black hole
+    starFade: 1       // the stars fade as they fall in
   };
 
   // Timers for the oscillators (automatic flipping).
@@ -64,7 +67,7 @@
 
   // Is the sky ready for play (first bit born, nothing being born right now)?
   function ready() {
-    return state.sparked && view.birth === null && view.ceremony === null;
+    return state.sparked && view.birth === null && view.ceremony === null && view.fall === null;
   }
 
   // ---------- the stars (one per bit) ----------
@@ -150,7 +153,8 @@
   // Add bits to the counter. Every way of earning comes through here, so the testing
   // speed-up (TEST_SPEED, from ?speed= in the address) only needs applying once. Returns what was added.
   function earn(amount) {
-    const added = amount * TEST_SPEED;
+    // Knowledge from earlier universes multiplies everything, too.
+    const added = amount * TEST_SPEED * Upgrades.knowledgeMultiplier(state);
     state.bits += added;
     state.lifetimeBits += added;
     return added;
@@ -468,14 +472,88 @@
       h.noted = true;
       UI.showNote('Far off, something dark\nis drawing in the light.', 12);
     }
+
+    // Once the unlocking achievement's goal is met, the black hole slowly draws closer.
+    const near = blackHoleOpen();
+    view.holeNear += ((near ? 1 : 0) - view.holeNear) * (1 - Math.exp(-0.4 * (1 / 60)));
+    if (near && !h.closeNoted) {
+      h.closeNoted = true;
+      if (!h.quick) UI.showNote('The dark has drawn close.\nTouch it when you are ready.', 12);
+    }
+  }
+
+  // Can the player fall into the black hole yet? The hook must have appeared, and the unlocking
+  // achievement's goal (Megabit: 1,048,576 bits) must be met in this universe. Achievements carry over
+  // between universes, so it's the goal itself we check, not whether the achievement was ever earned.
+  function blackHoleOpen() {
+    return state.hookSeen && Achievements.byId(CONFIG.knowledge.unlockAchievement).done(state);
+  }
+
+  // ---------- the black hole reset ----------
+
+  // The player has chosen to fall in: the stars spiral into the dark.
+  function beginFall() {
+    if (view.fall) return;
+    view.fall = { start: view.time, origins: view.stars.map(s => ({ x: s.x, y: s.y })) };
+    document.body.classList.add('falling');
+    Sound.fall(CONFIG.knowledge.fallSeconds);
+  }
+
+  // Each star spirals inward, faster and faster, circling as it goes, and fades at the end.
+  function runFall() {
+    const f = view.fall;
+    if (!f) return;
+    const t = (view.time - f.start) / CONFIG.knowledge.fallSeconds;
+    const hole = view.hookPoints.hole;
+    view.stars.forEach((star, i) => {
+      const o = f.origins[i];
+      // Each star falls at its own pace (the nearest first) and curls round at its own rate,
+      // so together they wind in like the arms of a spiral.
+      const own = Math.max(0, Math.min(1, (t - i * 0.03) / (1 - 0.25)));
+      // Distance closes steadily; the curl mostly happens near the end, close to the hole,
+      // so the stars wind round it instead of sweeping off the edge of the screen.
+      const dist = Math.hypot(o.x - hole.x, o.y - hole.y) * Math.pow(1 - own, 1.4);
+      const curl = 2.2 + i * 0.55;
+      const angle = Math.atan2(o.y - hole.y, o.x - hole.x) + Math.pow(own, 3) * curl;
+      star.x = hole.x + Math.cos(angle) * dist;
+      star.y = hole.y + Math.sin(angle) * dist;
+    });
+    view.starFade = 1 - Math.max(0, Math.min(1, (t - 0.7) / 0.3));
+    if (view.time - f.start >= CONFIG.knowledge.fallSeconds + CONFIG.knowledge.darkSeconds) startNewUniverse();
+  }
+
+  // A new universe: everything starts again, except achievements and Knowledge (and the count of
+  // universes, which turns the drone warm). The page reloads into the new universe's opening.
+  function startNewUniverse() {
+    const next = Save.fresh();
+    next.knowledge = (state.knowledge || 0) + Upgrades.knowledgeFromFall(state);
+    next.achievements = state.achievements;
+    next.universesCompleted = (state.universesCompleted || 0) + 1;
+    // Replace the old game completely, so nothing (like saving as the page closes) can bring it back.
+    for (const key of Object.keys(state)) delete state[key];
+    Object.assign(state, next);
+    Save.save(state);
+    view.fall = null;
+    location.reload();
   }
 
   // Tapping the hook's two mysteries just gives a hint.
   function hookTapped(x, y) {
     const p = view.hookPoints;
     if (!view.hook || !p) return false;
-    if (Math.hypot(x - p.hole.x, y - p.hole.y) < 40) {
-      UI.showNote('Not yet.\nIt is very far away.', 6);
+    if (Math.hypot(x - p.hole.x, y - p.hole.y) < 40 * (1 + view.holeNear)) {
+      if (!blackHoleOpen()) {
+        UI.showNote('Not yet.\nIt is very far away.', 6);
+        return true;
+      }
+      const gain = Upgrades.knowledgeFromFall(state);
+      const total = (state.knowledge || 0) + gain;
+      UI.confirmFall({
+        gain: gain,
+        total: total,
+        multiplier: 1 + total * CONFIG.knowledge.bonusEach,
+        universe: (state.universesCompleted || 0) + 2
+      }, beginFall);
       return true;
     }
     if (Math.hypot(x - p.door.x, y - p.door.y) < 44) {
@@ -561,7 +639,16 @@
   Achievements.check(state); // anything already earned in an older save counts, without a fanfare
 
   // A brand-new game opens in pitch black with the last words of the previous universe.
-  if (!state.sparked) document.getElementById('opening').classList.add('play');
+  // After a black-hole reset, the opening changes: warmer neon, "the data remembers", and the universe number.
+  if (!state.sparked) {
+    const opening = document.getElementById('opening');
+    if (state.universesCompleted > 0) {
+      opening.classList.add('warm');
+      opening.innerHTML = '<span class="neon">the data remembers' +
+        `<span class="neon-sub">universe ${state.universesCompleted + 1}</span></span>`;
+    }
+    opening.classList.add('play');
+  }
   window.addEventListener('resize', resize);
   resize();
 
@@ -596,6 +683,7 @@
     runChoice();
     runHook();
     view.track = state.track; // the resting pulse takes on the chosen track's colour
+    view.labelsHidden = !!view.fall;
 
     // Sound: one drone note per bit, the clock ticking with the oscillators, and the drone's tone
     // (cold in the first universe, warm after a black-hole reset).
@@ -628,7 +716,8 @@
     const glide = 1 - Math.exp(-4 * dt);
     view.cx += (centre.x - view.cx) * glide;
     view.cy += (centre.y - view.cy) * glide;
-    placeStars(1 - Math.exp(-3 * dt));
+    if (view.fall) runFall();                // the stars are being drawn into the dark
+    else placeStars(1 - Math.exp(-3 * dt));
 
     Render.update(view, dt);
     Render.draw(ctx, view, state);

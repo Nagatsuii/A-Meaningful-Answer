@@ -47,6 +47,11 @@ const Achievements = {
     }
   ],
 
+  // Find one achievement by its id.
+  byId(id) {
+    return this.list.find(a => a.id === id);
+  },
+
   // Mark any newly earned achievements, and return them (so they can be announced).
   check(state) {
     const fresh = [];

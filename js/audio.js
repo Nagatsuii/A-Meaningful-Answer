@@ -514,6 +514,42 @@ const Sound = (function () {
     }
   }
 
+  // Falling into the black hole: the drone sinks away while a deep tone slides down into silence,
+  // with a soft rush of air drawn in after it.
+  function fall(seconds) {
+    if (!running()) return;
+    const t = ctx.currentTime;
+    voices.forEach(v => {
+      v.out.gain.cancelScheduledValues(t);
+      v.out.gain.setTargetAtTime(0, t, seconds / 4);
+    });
+    if (wind) wind.gain.gain.setTargetAtTime(0, t, seconds / 3);
+
+    const deep = ctx.createOscillator();
+    deep.frequency.setValueAtTime(220, t);
+    deep.frequency.exponentialRampToValueAtTime(30, t + seconds);
+    const deepGain = ctx.createGain();
+    deepGain.gain.setValueAtTime(0, t);
+    deepGain.gain.linearRampToValueAtTime(LEVEL.note * 0.6, t + seconds * 0.3);
+    deepGain.gain.linearRampToValueAtTime(0, t + seconds);
+    deep.connect(deepGain);
+    deepGain.connect(master);
+    deep.start(t);
+    deep.stop(t + seconds + 0.1);
+
+    const rush = noiseSource(t, seconds + 0.1);
+    const low = filter('lowpass', 2400, 0.8);
+    low.frequency.setValueAtTime(2400, t);
+    low.frequency.exponentialRampToValueAtTime(80, t + seconds);
+    const rushGain = ctx.createGain();
+    rushGain.gain.setValueAtTime(0, t);
+    rushGain.gain.linearRampToValueAtTime(LEVEL.note * 0.35, t + seconds * 0.5);
+    rushGain.gain.linearRampToValueAtTime(0, t + seconds);
+    rush.connect(low);
+    low.connect(rushGain);
+    rushGain.connect(master);
+  }
+
   // ---------- volume, mute, pausing ----------
 
   function setVolume(v) {
@@ -543,7 +579,7 @@ const Sound = (function () {
 
   return {
     unlock, update, setBits, setWarm, tap, purchase, affordable,
-    bitBorn, firstPulse, byteChord, achievement,
+    bitBorn, firstPulse, byteChord, achievement, fall,
     setVolume, setMuted, getSettings, suspend, resume
   };
 })();

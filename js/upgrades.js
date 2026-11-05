@@ -160,6 +160,19 @@ const Upgrades = {
     return CONFIG.offlineEfficiency * (1 + this.owned(state, 'register') * CONFIG.upgrades.register.bonusEach);
   },
 
+  // ---------- Knowledge (carried between universes) ----------
+
+  // Everything earned is multiplied by this: 1 + 10% per point of Knowledge.
+  knowledgeMultiplier(state) {
+    return 1 + (state.knowledge || 0) * CONFIG.knowledge.bonusEach;
+  },
+
+  // How much Knowledge falling into the black hole now would give.
+  // A square root means more bits always give more, but each extra point takes longer.
+  knowledgeFromFall(state) {
+    return Math.floor(Math.sqrt(state.lifetimeBits / CONFIG.knowledge.divisor));
+  },
+
   // Bits per second earned without tapping.
   bitsPerSecond(state) {
     const perFlip = CONFIG.upgrades.oscillator.bitsPerFlip;

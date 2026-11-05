@@ -20,6 +20,7 @@ const Save = {
       // How many universes have ended in a black-hole reset. The reset isn't built yet; when it is,
       // it must carry this number over into the new game. Above 0, the drone turns warm.
       universesCompleted: 0,
+      knowledge: 0,   // carried from universe to universe: each point boosts all earning (see CONFIG.knowledge)
       lastSeen: null  // the clock time (in milliseconds) the game was last running
     };
   },

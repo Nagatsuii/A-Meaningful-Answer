@@ -186,6 +186,15 @@ const CONFIG = {
   offlineMessageMinSeconds: 60, // only say "while you were away" after at least this long
   offlineMessageSeconds: 9,    // how long that note stays on screen
 
+  // --- The black hole reset (falling in starts a new universe) ---
+  knowledge: {
+    unlockAchievement: 'megabit', // the black hole can be entered once this achievement's goal is met in the current universe
+    divisor: 10000,            // Knowledge gained = square root of (bits earned this universe ÷ this), rounded down
+    bonusEach: 0.1,            // each point of Knowledge adds +10% to all earning, forever
+    fallSeconds: 4.5,          // the stars spiral into the dark...
+    darkSeconds: 2             // ...then the sky stays black for a moment before the new universe
+  },
+
   // --- Sound (the sounds themselves, and their loudness, are in audio.js) ---
   audio: {
     defaultVolume: 0.7,        // starting volume, 0 to 1 (players can change it with the slider)

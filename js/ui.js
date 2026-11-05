@@ -68,9 +68,13 @@ const UI = (function () {
       const whole = Math.floor(state.bits);
       countEl.textContent = whole.toLocaleString();
       unitEl.textContent = whole === 1 ? 'bit' : 'bits';
-      const rate = Upgrades.bitsPerSecond(state) * TEST_SPEED;
+      const rate = Upgrades.bitsPerSecond(state) * TEST_SPEED * Upgrades.knowledgeMultiplier(state);
       const shown = rate < 10 ? Math.round(rate * 10) / 10 : Math.round(rate); // one decimal when small
       rateEl.textContent = rate > 0 ? `+${shown.toLocaleString()} per second` : '';
+      const k = state.knowledge || 0;
+      document.getElementById('knowledge').textContent = k > 0
+        ? `${k.toLocaleString()} knowledge · all earning ×${Upgrades.knowledgeMultiplier(state).toFixed(1)}`
+        : '';
       counterEl.classList.add('visible');
     }
 
@@ -213,5 +217,34 @@ const UI = (function () {
     }, 4500);
   }
 
-  return { build, refresh, skyCentre, showNote, showAway, showChoice, placeChoice, showAchievement };
+  // ---------- falling into the black hole ----------
+
+  // Ask before falling in, showing what will be lost and what will be carried.
+  // `info` = { gain, total, multiplier, universe }. Calls onYes() if the player chooses to fall.
+  function confirmFall(info, onYes) {
+    const box = document.getElementById('confirm');
+    const yes = document.getElementById('confirm-yes');
+    const no = document.getElementById('confirm-no');
+    document.getElementById('confirm-text').textContent =
+      'Everything here will be lost: your bits, upgrades and stars.\n' +
+      'Only your achievements and your Knowledge will remain.\n\n' +
+      `You will carry ${info.gain} Knowledge into universe ${info.universe} ` +
+      `(${info.total} in all: all earning ×${info.multiplier.toFixed(1)}).`;
+    box.hidden = false;
+    no.focus(); // "Not yet" is the safe default
+
+    const close = () => {
+      box.hidden = true;
+      yes.removeEventListener('click', fall);
+      no.removeEventListener('click', close);
+      document.removeEventListener('keydown', onKey);
+    };
+    const fall = () => { close(); onYes(); };
+    const onKey = e => { if (e.key === 'Escape') close(); };
+    yes.addEventListener('click', fall);
+    no.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+  }
+
+  return { build, refresh, skyCentre, showNote, showAway, showChoice, placeChoice, showAchievement, confirmFall };
 })();

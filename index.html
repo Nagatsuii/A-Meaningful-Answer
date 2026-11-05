@@ -16,13 +16,26 @@
   <canvas id="sky" aria-label="A dark sky. Tap the faint glow in the middle."></canvas>
 
   <!-- The bit counter sits on top of the canvas as normal text, so it stays crisp -->
-  <!-- The opening: in pitch black, before the first spark, the last words of the previous universe -->
-  <div id="opening" aria-hidden="true"><span>insufficient data</span></div>
+  <!-- The opening: in pitch black, before the first spark, the last words of the previous universe.
+       (After a black-hole reset, main.js swaps in "the data remembers" and the universe number.) -->
+  <div id="opening" aria-hidden="true"><span class="neon">insufficient data</span></div>
 
   <!-- Sound: mute button and volume slider -->
   <div id="sound-controls">
     <button id="mute" type="button" aria-pressed="false" aria-label="Mute sound">♪</button>
     <input id="volume" type="range" min="0" max="100" value="70" aria-label="Volume">
+  </div>
+
+  <!-- Asking before falling into the black hole -->
+  <div id="confirm" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="confirm-box">
+      <p id="confirm-title">Fall into the dark?</p>
+      <p id="confirm-text"></p>
+      <div class="confirm-buttons">
+        <button type="button" id="confirm-no">Not yet</button>
+        <button type="button" id="confirm-yes">Fall in</button>
+      </div>
+    </div>
   </div>
 
   <!-- Achievement announcements -->
@@ -38,6 +51,8 @@
   <div id="counter">
     <div><span id="count">0</span> <span id="unit">bits</span></div>
     <div id="rate"></div>
+    <!-- Knowledge carried from earlier universes (only shown once there is some) -->
+    <div id="knowledge"></div>
     <!-- Short notes ("While you were away...", "Four possible states") fade in here, then out -->
     <div id="note" role="status"></div>
   </div>

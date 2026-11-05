@@ -89,7 +89,7 @@ body {
   transform: translateY(-12vh);        /* above the spot where the first bit will spark */
 }
 
-#opening span {
+#opening .neon {
   padding: 0.45em 0.9em;
   font-family: "Arial Rounded MT Bold", "Nunito", "Varela Round", system-ui, sans-serif;
   font-weight: 800;
@@ -111,8 +111,30 @@ body {
   opacity: 0;
 }
 
-#opening.play span {
+#opening.play .neon {
   animation: neon-flicker 5.6s linear forwards;
+}
+
+/* After a black-hole reset: warmer neon, with the universe number on a second, smaller line. */
+#opening.warm .neon {
+  text-align: center;
+  color: #fff6ec;
+  text-shadow:
+    0 0 2px #ffffff,
+    0 0 6px #ffe2c6,
+    0 0 14px #ffb27a,
+    0 0 28px #ff7d5c,
+    0 0 56px #ff4f78;
+  background: rgba(255, 180, 140, 0.035);
+  border-color: rgba(255, 200, 170, 0.12);
+  box-shadow: 0 0 40px rgba(255, 120, 90, 0.08), inset 0 0 24px rgba(255, 170, 130, 0.05);
+}
+
+#opening .neon-sub {
+  display: block;
+  margin-top: 0.35em;
+  font-size: 0.45em;
+  letter-spacing: 0.3em;
 }
 
 /* Off, a few stuttering flashes as the tubes catch, steady, one last stutter, then a slow fade. */
@@ -134,6 +156,96 @@ body {
   0%, 15% { opacity: 0; }
   30%, 74% { opacity: 1; }
   100% { opacity: 0; }
+}
+
+/* Knowledge carried between universes, under the counter. */
+#knowledge {
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 190, 160, 0.6);
+  min-height: 1em;
+}
+
+/* ---------- Falling into the black hole ---------- */
+
+/* Everything on the page fades away as the stars spiral in. */
+body.falling #counter,
+body.falling #panel,
+body.falling #achievement,
+body.falling #choice {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: opacity 2.5s ease;
+}
+
+#confirm {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(2, 3, 8, 0.6);
+}
+
+#confirm[hidden] {
+  display: none;
+}
+
+.confirm-box {
+  max-width: 340px;
+  padding: 22px 22px 18px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  text-align: center;
+  color: #cfd8ff;
+  background: rgba(10, 12, 26, 0.95);
+  border: 1px solid rgba(200, 170, 255, 0.3);
+  border-radius: 14px;
+  box-shadow: 0 0 40px rgba(140, 110, 220, 0.15);
+}
+
+#confirm-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: #e6dcff;
+}
+
+#confirm-text {
+  margin: 0 0 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-line;
+  color: rgba(207, 216, 255, 0.75);
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.confirm-buttons button {
+  min-width: 110px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 13px;
+  color: #cfd8ff;
+  background: rgba(150, 180, 255, 0.06);
+  border: 1px solid rgba(150, 180, 255, 0.25);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#confirm-yes {
+  color: #f0e6ff;
+  border-color: rgba(200, 170, 255, 0.55);
+  background: rgba(170, 130, 255, 0.12);
+}
+
+.confirm-buttons button:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 /* ---------- Sound controls (top right) ---------- */
@@ -516,7 +628,7 @@ body {
 /* People who ask their device for less motion get instant changes instead. */
 @media (prefers-reduced-motion: reduce) {
   /* No flicker: the neon words simply fade in and out. */
-  #opening.play span {
+  #opening.play .neon {
     animation: neon-fade 5.6s ease forwards;
   }
 
