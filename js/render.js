@@ -536,8 +536,8 @@ const Render = (function () {
   function drawRule(ctx, view, x, y) {
     const parts = [
       { text: 'IF carry', key: 'if' },
-      { text: 'THEN ×3', key: 'then' },
-      { text: 'ELSE ×1.5', key: 'else' }
+      { text: `THEN ×${CONFIG.upgrades.ifThenElse.thenMultiplier}`, key: 'then' },
+      { text: `ELSE ×${CONFIG.upgrades.ifThenElse.elseMultiplier}`, key: 'else' }
     ];
     const gapPx = 22;
     ctx.font = `12px ${FONT}`;

@@ -35,8 +35,8 @@ const CONFIG = {
       name: 'Amplifier',
       effect: '+1 bit for every flip you make',
       lesson: 'An amplifier makes a weak signal stronger.',
-      baseCost: 10,
-      costGrowth: 1.6,
+      baseCost: 15,
+      costGrowth: 2.1,
       revealAt: 5,
       bitsPerTapEach: 1      // extra bits per tap, for each amplifier owned
     },
@@ -44,19 +44,19 @@ const CONFIG = {
       name: 'Oscillator',
       effect: 'flips the bit on its own',
       lesson: 'A circuit that switches itself on and off: the heartbeat inside every computer.',
-      baseCost: 20,
-      costGrowth: 1.5,
+      baseCost: 40,
+      costGrowth: 1.6,
       revealAt: 12,
-      flipsPerSecondEach: 0.5, // each oscillator flips the bit once every 2 seconds
+      flipsPerSecondEach: 1,   // each oscillator flips the bit once a second
       bitsPerFlip: 1           // bits earned for each bit an automatic tick flips
     },
     secondBit: {
       name: 'Second Bit',
       effect: 'a second bit joins the first',
       lesson: 'Two bits can hold four states: 00, 01, 10, 11. Each bit you add doubles what can be stored.',
-      baseCost: 250,
+      baseCost: 9000,
       costGrowth: 1,
-      revealAt: 150,
+      revealAt: 5000,
       maxOwned: 1              // you can only buy this once
     },
 
@@ -66,9 +66,9 @@ const CONFIG = {
       name: 'Latch',
       effect: 'time away counts for 4 more hours',
       lesson: 'The simplest memory: it holds a 1 or a 0 until it is told to change.',
-      baseCost: 6000,
+      baseCost: 9000,
       costGrowth: 2.2,
-      revealAt: 32000,
+      revealAt: 125000,
       maxOwned: 3,
       hoursEach: 4             // extra offline hours per latch
     },
@@ -77,20 +77,20 @@ const CONFIG = {
       name: 'Register',
       effect: '+50% bits earned while away',
       lesson: 'A register holds a whole byte right inside the processor, ready to use.',
-      baseCost: 10000,
+      baseCost: 14000,
       costGrowth: 1.9,
-      revealAt: 38000,
+      revealAt: 140000,
       bonusEach: 0.5           // +50% offline earnings per register
     },
     memoryCell: {
       track: 'storage',
       name: 'Memory Cell',
-      effect: '+15 bits per second, always',
+      effect: '+35 bits per second, always',
       lesson: 'Memory keeps information from being lost. Your computer\'s RAM is billions of tiny cells like this.',
-      baseCost: 15000,
-      costGrowth: 1.6,
-      revealAt: 45000,
-      bitsPerSecondEach: 15    // earned every second, even while away and with no oscillators
+      baseCost: 18000,
+      costGrowth: 1.55,
+      revealAt: 125000,       // at the fork, with the Latch: it's the Storage upgrade that helps while you play
+      bitsPerSecondEach: 35    // earned every second, even while away and with no oscillators
     },
 
     // ----- Logic track (violet): transforming information. Makes flips worth more. -----
@@ -99,9 +99,9 @@ const CONFIG = {
       name: 'NOT Gate',
       effect: 'carries earn double',
       lesson: 'NOT turns 1 into 0 and 0 into 1. A carry is exactly that: a run of 1s flipping to 0.',
-      baseCost: 6000,
+      baseCost: 9000,
       costGrowth: 1,
-      revealAt: 32000,
+      revealAt: 125000,
       maxOwned: 1,
       carryBonusEach: 1        // each carried flip earns this much extra (1 = double)
     },
@@ -110,9 +110,9 @@ const CONFIG = {
       name: 'AND Gate',
       effect: '+100% on taps that leave the two rightmost bits both 1',
       lesson: 'AND outputs 1 only when both of its inputs are 1.',
-      baseCost: 10000,
-      costGrowth: 1.9,
-      revealAt: 38000,
+      baseCost: 14000,
+      costGrowth: 1.7,
+      revealAt: 140000,
       bonusEach: 1
     },
     orGate: {
@@ -120,33 +120,33 @@ const CONFIG = {
       name: 'OR Gate',
       effect: '+50% on oscillator steps that leave either rightmost bit on',
       lesson: 'OR outputs 1 when either input is 1, or both.',
-      baseCost: 15000,
-      costGrowth: 1.8,
-      revealAt: 45000,
+      baseCost: 18000,
+      costGrowth: 1.65,
+      revealAt: 160000,
       bonusEach: 0.5
     },
     ifThenElse: {
       track: 'logic',
       name: 'IF · THEN · ELSE',
-      effect: 'IF a step carries, THEN it earns ×3, ELSE it earns ×1.5',
+      effect: 'IF a step carries, THEN it earns ×1.75, ELSE it earns ×1.3',
       lesson: 'Programs make choices: check a condition, then take one path or the other. Every app you use is full of IF, THEN and ELSE.',
-      baseCost: 22000,
+      baseCost: 30000,
       costGrowth: 1,
-      revealAt: 55000,
+      revealAt: 180000,
       maxOwned: 1,
-      thenMultiplier: 3,       // a step that carries earns this many times as much
-      elseMultiplier: 1.5      // a step that doesn't carry earns this many times as much
+      thenMultiplier: 1.75,    // a step that carries earns this many times as much
+      elseMultiplier: 1.3      // a step that doesn't carry earns this many times as much
     }
   },
 
   // --- Choosing Storage or Logic (after the byte forms) ---
-  trackChoiceAt: 32000,        // the two paths open once lifetime bits reach this
+  trackChoiceAt: 125000,       // the two paths open once lifetime bits reach this (about 42 minutes in)
   choiceOpenSeconds: 2,        // how long the paths take to draw themselves out of the byte
   choiceSettleSeconds: 3.2,    // after choosing: the chosen light flows into the byte, the other fades
 
   // --- The hook (end of the first hour) ---
   // The path you didn't choose glows faintly again, and far off a dark shimmer appears: a black hole.
-  hookAt: 70000,               // lifetime bits needed (after choosing a track)
+  hookAt: 230000,              // lifetime bits needed (after choosing a track; about 55 minutes in)
   hookDoorSeconds: 6,          // the locked doorway fades back in over this long
   hookShimmerDelay: 10,        // seconds later, the dark shimmer starts to appear...
   hookShimmerSeconds: 20,      // ...and takes this long to fully fade in, because it's far away
@@ -164,7 +164,7 @@ const CONFIG = {
   // --- The constellation (bits 3 to 7) ---
   // Once you own the second bit, more bits join by themselves as your lifetime bits pass these totals.
   // One number per bit: 3rd, 4th, 5th, 6th, 7th, and the 8th, which completes the byte.
-  joinAt: [800, 2000, 4500, 9000, 16000, 28000],
+  joinAt: [25000, 37000, 52000, 68000, 85000, 103000], // about 16, 21, 25, 29, 33 and 37 minutes in
   // How far each bit sits above (-) or below (+) the middle line, as a share of the spacing.
   // Bit 0 (the ones place, on the right) comes first. This is what makes a row into a constellation.
   constellationShape: [0, 0, -0.55, -0.1, 0.45, 0.05, -0.5, 0.3],
