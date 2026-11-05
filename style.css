@@ -358,6 +358,109 @@ body.falling #choice {
   display: none;
 }
 
+/* ---------- Dev tools (hidden unless opened; see js/dev.js) ---------- */
+
+#dev-button {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 40px);
+  left: 12px;
+  padding: 4px 8px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: rgba(140, 255, 180, 0.8);
+  background: rgba(10, 20, 14, 0.8);
+  border: 1px solid rgba(140, 255, 180, 0.35);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#dev-panel {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 72px);
+  left: 12px;
+  width: 280px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 100px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 12px 14px 14px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  color: #d8ffe4;
+  background: rgba(6, 14, 10, 0.94);
+  border: 1px solid rgba(140, 255, 180, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 0 30px rgba(80, 200, 130, 0.12);
+  z-index: 10;
+}
+
+#dev-panel[hidden] {
+  display: none;
+}
+
+.dev-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(140, 255, 180, 0.85);
+}
+
+.dev-close {
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+  line-height: 1;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.dev-section {
+  margin-top: 10px;
+}
+
+.dev-title {
+  margin-bottom: 6px;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(216, 255, 228, 0.5);
+}
+
+.dev-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dev-row button {
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: #d8ffe4;
+  background: rgba(140, 255, 180, 0.06);
+  border: 1px solid rgba(140, 255, 180, 0.25);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dev-row button.on {
+  color: #062010;
+  background: rgba(140, 255, 180, 0.85);
+  border-color: transparent;
+}
+
+.dev-row button:focus-visible,
+.dev-close:focus-visible,
+#dev-button:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.6);
+}
+
 /* ---------- The upgrade menu ---------- */
 /* Phones first: a sheet along the bottom. Only its tab peeks out until you open it. */
 

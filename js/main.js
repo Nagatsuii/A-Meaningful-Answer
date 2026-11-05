@@ -475,7 +475,7 @@
 
     // Once the unlocking achievement's goal is met, the black hole slowly draws closer.
     const near = blackHoleOpen();
-    view.holeNear += ((near ? 1 : 0) - view.holeNear) * (1 - Math.exp(-0.4 * (1 / 60)));
+    view.holeNear += ((near ? 1 : 0) - view.holeNear) * (1 - Math.exp(-0.4 * (view.dt || 0)));
     if (near && !h.closeNoted) {
       h.closeNoted = true;
       if (!h.quick) UI.showNote('The dark has drawn close.\nTouch it when you are ready.', 12);
@@ -627,6 +627,28 @@
   }
   window.addEventListener('pagehide', saveNow);
 
+  // ---------- dev tools helpers (only reachable from the hidden dev menu) ----------
+
+  // Add bits as if earned (so milestones like new bits and the choice still happen in order).
+  function devAddBits(n) {
+    state.bits += n;
+    state.lifetimeBits += n;
+    UI.refresh(state, ready());
+    Save.save(state);
+  }
+
+  Dev.addTool('Bits', '+1,000', () => devAddBits(1000));
+  Dev.addTool('Bits', '+100,000', () => devAddBits(100000));
+  Dev.addTool('Bits', '+1,000,000', () => devAddBits(1000000));
+  Dev.addTool('Save', 'Reset save', () => {
+    if (!confirm('Wipe this save and start again from the dark?')) return;
+    // Replace the game completely (as the black-hole reset does), so saving as the page closes can't bring it back.
+    for (const key of Object.keys(state)) delete state[key];
+    Object.assign(state, Save.fresh());
+    Save.clear();
+    location.reload();
+  });
+
   // ---------- start up ----------
 
   view.byteWaveTime = byteWaveTime; // shared with render.js so the glow and the ripples line up
@@ -647,6 +669,8 @@
       opening.innerHTML = '<span class="neon">the data remembers' +
         `<span class="neon-sub">universe ${state.universesCompleted + 1}</span></span>`;
     }
+    // The neon animation is CSS; match it to the game speed so it still ends as the glow appears.
+    opening.querySelector('.neon').style.animationDuration = `${5.6 / Dev.timeScale()}s`;
     opening.classList.add('play');
   }
   window.addEventListener('resize', resize);
@@ -657,10 +681,14 @@
   // Runs about 60 times a second: move everything a little, then draw it.
   let last = performance.now();
   function frame(now) {
-    // dt = seconds since the last frame. Capped so a long pause (tab hidden) doesn't cause a jump.
-    const dt = Math.min((now - last) / 1000, 0.1);
+    // realDt = real seconds since the last frame. Capped so a long pause (tab hidden) doesn't cause a jump.
+    // dt = game seconds: real time multiplied by the dev tools' game speed (normally 1).
+    // Everything that moves or counts in the game uses dt, so it all speeds up together.
+    const realDt = Math.min((now - last) / 1000, 0.1);
+    const dt = realDt * Dev.timeScale();
     last = now;
     view.time += dt;
+    view.dt = dt;
 
     // Has a birth animation just finished?
     if (view.birth && view.time - view.birth.start >= CONFIG.birthSeconds) {
@@ -689,11 +717,12 @@
     // (cold in the first universe, warm after a black-hole reset).
     Sound.setBits(state.sparked ? view.stars.length : 0);
     Sound.setWarm(state.universesCompleted > 0 || TEST_WARM);
-    Sound.update(dt, ready() ? Upgrades.flipsPerSecond(state) : 0);
+    // The clock ticks in game time, so it speeds up with the game; streak timing stays real (it's your fingers).
+    Sound.update(realDt, ready() ? Upgrades.flipsPerSecond(state) * Dev.timeScale() : 0);
     view.showRule = Upgrades.owned(state, 'ifThenElse') > 0;
 
     // Refresh the counter and menu a few times a second (often enough to look live, cheap on phones).
-    uiTimer += dt;
+    uiTimer += realDt; // screen refreshes and saves run on real time, whatever the game speed
     if (uiTimer >= 0.2 && ready()) {
       uiTimer = 0;
       UI.refresh(state, true);
@@ -705,7 +734,7 @@
     }
 
     // Save every few seconds while oscillators are earning.
-    saveTimer += dt;
+    saveTimer += realDt;
     if (saveTimer >= CONFIG.autoSaveSeconds) {
       saveTimer = 0;
       if (Upgrades.flipsPerSecond(state) > 0) Save.save(state);

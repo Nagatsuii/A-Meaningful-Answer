@@ -71,6 +71,12 @@ const Sound = (function () {
     return performance.now() / 1000;
   }
 
+  // Turn game seconds into real seconds, so notes stay in time with animations when the dev tools
+  // speed the game up. (Only waits are scaled; sounds keep their own pitch and length.)
+  function game(seconds) {
+    return seconds / Dev.timeScale();
+  }
+
   // Apply the volume slider and mute button. Squaring the slider value feels more natural to the ear.
   function applyVolume() {
     if (!master) return;
@@ -461,7 +467,7 @@ const Sound = (function () {
   // timed to the flash of its birth.
   function bitBorn(index, delay) {
     if (!running()) return;
-    const t = ctx.currentTime + (delay || 0);
+    const t = ctx.currentTime + game(delay || 0);
     const f = SCALE[index % SCALE.length];
     bell(f * 2, t, LEVEL.note, 3.2, 1.2);
     pad(f, t, LEVEL.note * 0.25, 0.3, 0.5, 3);
@@ -470,9 +476,9 @@ const Sound = (function () {
   // The first pulse between two bits: a note as it leaves, and the other bit's note as it arrives.
   function firstPulse(delay, travel) {
     if (!running()) return;
-    const t = ctx.currentTime + delay;
+    const t = ctx.currentTime + game(delay);
     bell(SCALE[0] * 2, t, LEVEL.note * 0.7, 2.5, 0.6);
-    bell(SCALE[1] * 2, t + travel, LEVEL.note * 0.7, 3, 0.6);
+    bell(SCALE[1] * 2, t + game(travel), LEVEL.note * 0.7, 3, 0.6);
   }
 
   // The byte forms: each bit rings as the wave of light passes it, then all eight swell into a chord.
@@ -480,10 +486,10 @@ const Sound = (function () {
   function byteChord(waveDelays, chordDelay) {
     if (!running()) return;
     const t = ctx.currentTime;
-    waveDelays.forEach((d, i) => bell(SCALE[i] * 2, t + d, LEVEL.note * 0.55, 2.4, 0.8));
+    waveDelays.forEach((d, i) => bell(SCALE[i] * 2, t + game(d), LEVEL.note * 0.55, 2.4, 0.8));
     SCALE.forEach((f, i) => {
-      pad(f, t + chordDelay, LEVEL.note * 0.14, 1.8, 2.5, 5);
-      pad(f * 2, t + chordDelay + 0.05 * i, LEVEL.note * 0.08, 2.2, 2, 5);
+      pad(f, t + game(chordDelay), LEVEL.note * 0.14, 1.8, 2.5, 5);
+      pad(f * 2, t + game(chordDelay) + 0.05 * i, LEVEL.note * 0.08, 2.2, 2, 5);
     });
   }
 
@@ -516,9 +522,10 @@ const Sound = (function () {
 
   // Falling into the black hole: the drone sinks away while a deep tone slides down into silence,
   // with a soft rush of air drawn in after it.
-  function fall(seconds) {
+  function fall(gameSeconds) {
     if (!running()) return;
     const t = ctx.currentTime;
+    const seconds = game(gameSeconds); // the slide lasts as long as the fall animation
     voices.forEach(v => {
       v.out.gain.cancelScheduledValues(t);
       v.out.gain.setTargetAtTime(0, t, seconds / 4);

@@ -29,10 +29,17 @@ The game is called **A Meaningful Answer**, a nod to Asimov's "The Last Question
 - GitHub Pages serves `index.html` from the repo root, so keep the entry page there (`.nojekyll` is in place).
 - Live at https://nagatsuii.github.io/A-Meaningful-Answer/ once Pages is turned on (Settings → Pages → `main`, `/ (root)`).
 
+### Dev tools (hidden from normal players)
+
+- Open with `?dev=1` (remembered; `?dev=0` turns it off and resets the speed), by typing `devmode`, or with 5 quick taps in the top-left corner on a phone.
+- **Game speed** 1×–100×: one central time scale, `Dev.timeScale()`. A "TIME ×N" badge shows whenever it isn't 1×.
+- Helpers: add bits, reset the save. Add more with `Dev.addTool(group, label, run)` (see the bottom of `main.js`),
+  e.g. jumping to milestones or triggering a black-hole reset.
+
 ### Testing switches (add to the page address)
 
 - `?reset`: wipe the save and start from the dark.
-- `?speed=20`: every bit earned counts 20× (up to 1000). Shows a "TEST ×20" badge. Progress is saved as normal.
+- `?speed=20`: every bit earned counts 20× (up to 1000) — bits, not time. Shows a "BITS ×20" badge. Progress is saved as normal.
 - `?warm`: hear the warm drone of a later universe.
 - They combine, e.g. `?reset&speed=50`.
 
@@ -104,6 +111,7 @@ All seven steps exist. The milestone totals and costs in `js/config.js` are firs
 | `index.html` | the page; loads the scripts in order |
 | `style.css` | layout, menu, notes, neon opening, dialogs |
 | `js/config.js` | every tweakable number, plus the `?speed` and `?warm` switches |
+| `js/dev.js` | the hidden dev tools menu and the central game speed |
 | `js/save.js` | the save format (`Save.fresh()` lists every field) and loading/saving |
 | `js/upgrades.js` | upgrade rules, and `Upgrades.step`: the single place that decides what one counting step earns |
 | `js/achievements.js` | achievements and their tests |
@@ -120,6 +128,9 @@ All seven steps exist. The milestone totals and costs in `js/config.js` are firs
 - Ask before adding new features outside the current target.
 - Keep the conventions the code relies on:
   - All earning goes through `earn()` in `main.js` (that's where test speed and Knowledge apply).
+  - Anything timed in the game uses game time (`dt` / `view.time` in the main loop) so the dev speed-up scales it.
+    Only real-life things use real time: the player's tapping, how long notes stay readable, time away, autosaves.
+    Sound waits that line up with animations go through `game()` in `audio.js`.
   - What a step is worth is decided only in `Upgrades.step`; averages (offline, per second) are built from it.
   - A new save field needs a default in `Save.fresh()`, so older saves still load.
   - Anything meant to survive a black-hole reset must be copied over in `startNewUniverse()` in `main.js`.

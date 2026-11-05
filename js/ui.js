@@ -19,12 +19,6 @@ const UI = (function () {
   let firstRefresh = true;
   let onAffordable = null;
 
-  // While testing at a higher speed, show a small badge so it's never mistaken for normal play.
-  if (TEST_SPEED > 1) {
-    const badge = document.getElementById('test-badge');
-    badge.textContent = `TEST ×${TEST_SPEED}`;
-    badge.hidden = false;
-  }
 
   // Build the menu once. `onBuy(id)` is called when an upgrade is pressed,
   // `onChoose(track)` when one of the two paths is picked, and `whenAffordable()` the first time
