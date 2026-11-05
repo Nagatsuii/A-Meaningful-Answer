@@ -80,6 +80,7 @@ All seven steps exist. The milestone totals and costs in `js/config.js` were tun
 rules (a steady player tapping about twice a second, buying whatever pays back fastest), so the times below hold for that
 player on either track. Faster or slower tappers move through it faster or slower (the early game leans on tapping).
 Real playtesting is still the final check. The black hole (Megabit) then opens at about 1 h 45 of active play.
+Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (see the README).
 
 1. **0–2 min:** darkness, "insufficient data" flickers in neon, then the first bit sparks to life.
 2. **2–10 min:** toggle loop, Amplifier (per-tap upgrade), Oscillator (auto-flipper, ticks like a muffled clock).
@@ -123,6 +124,7 @@ Real playtesting is still the final check. The black hole (Megabit) then opens a
 | `js/render.js` | all canvas drawing |
 | `js/ui.js` | counter, menu, notes, choice buttons, dialogs, sound controls |
 | `js/main.js` | game flow: taps, counting, births, the byte ceremony, the choice, the hook, the reset, the main loop |
+| `tools/balance-sim.js` | balance simulator (Node.js, not loaded by the game): plays the real rules, prints milestone times |
 
 ## How to work in this repo
 
@@ -138,4 +140,6 @@ Real playtesting is still the final check. The black hole (Megabit) then opens a
   - What a step is worth is decided only in `Upgrades.step`; averages (offline, per second) are built from it.
   - A new save field needs a default in `Save.fresh()`, so older saves still load.
   - Anything meant to survive a black-hole reset must be copied over in `startNewUniverse()` in `main.js`.
+  - The simulator copies the milestone rules from `main.js` (in `playOnce()`); if a milestone is added or its
+    trigger changes, update the simulator too.
 - Run `node --check` on each changed JS file before testing; a missing comma in `config.js` breaks the whole game.

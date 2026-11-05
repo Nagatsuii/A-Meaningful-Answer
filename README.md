@@ -39,6 +39,19 @@ Progress made at test speed is saved like normal progress, so use `?reset` after
 Add `?warm` to hear the warm drone of a later universe (normally it only turns warm after a black-hole
 reset, which isn't built yet).
 
+## Checking the balance
+
+`tools/balance-sim.js` plays the game's real rules with a modelled player and prints when each milestone
+arrives. It needs [Node.js](https://nodejs.org); the game itself doesn't.
+
+```bash
+node tools/balance-sim.js --all
+```
+
+That prints a table for both tracks at 1, 2 and 4 taps a second. Other options: `--taps 3`, `--track logic`,
+and `--try trial.json` to test numbers without editing `config.js` (a trial file lists only what changes,
+e.g. `{ "hookAt": 250000 }`). The comments at the top of the file explain the rest.
+
 ## Files
 
 - `index.html` — the page
@@ -49,6 +62,7 @@ reset, which isn't built yet).
 - `js/upgrades.js` — the rules for buying upgrades and what they add up to
 - `js/achievements.js` — the achievements and what earns each one
 - `js/audio.js` — every sound, made in code with the Web Audio API (no sound files)
+- `tools/balance-sim.js` — the balance simulator (not loaded by the game)
 - `js/render.js` — draws the sky, the bit and its effects on the canvas
 - `js/ui.js` — the counter and the upgrade menu
 - `js/main.js` — starts the game, handles taps, runs the animation loop
