@@ -62,7 +62,9 @@ The game is called **A Meaningful Answer**, a nod to Asimov's "The Last Question
 ## Sound
 
 - Mix, quietest to loudest: drone < taps and clock ticks < purchase zaps and streak sparks < milestone notes < achievement chimes. Big moments must stand out.
-- Musical notes are reserved for milestones (a new bit, the first pulse between bits, the byte chord). Taps stay a near-silent tick.
+- Musical notes are reserved for milestones (a new bit, the first pulse between bits, bit 5's rising chord, the byte chord).
+  Taps stay a near-silent tick that climbs in pitch during a fast streak, with a spark at the top.
+- Boosters crackle when they appear and use the purchase zap when caught. Falling into the black hole has its own descending sound.
 - The drone has one note per bit from a D major scale: cold and airy in the first universe, warm after a black-hole reset.
 - Sound starts on the player's first touch, click or key press (browser autoplay rules). Mute and volume controls sit top right.
 - Loudness of every sound is in the `LEVEL` list at the top of `js/audio.js`.
@@ -72,6 +74,8 @@ The game is called **A Meaningful Answer**, a nod to Asimov's "The Last Question
 - The core verb is the **toggle**: flipping a bit generates bits.
 - Bits are the currency, spent on hardware upgrades that let you produce more bits.
 - Early game leans toward clicking: per-click upgrades plus auto-flippers.
+- New bits are bought (Second Bit, then the Next Bit card up to eight), and each one makes all earning a little bigger.
+- Boosters appear now and then to tap while playing (a burst of bits, or a short production boost).
 - The bits count together in binary (00 → 01 → 10 → 11…). Every bit that flips earns, so carries pay more,
   and a carry travels to the next bit as a gold pulse of light.
 
@@ -92,7 +96,7 @@ Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (s
    each with its own one-line lesson). Every bit beyond the first makes all earning 25% more than before (`bitBonusEach`).
    Mid-stretch moment at bit 5: the threads flare and stay brighter, a rising chord plays, and **Resonance** unlocks
    (oscillators 25% faster per level). The bits sit in a wandering constellation.
-5. **35–40 min:** the 8th bit joins and the byte forms in a short ceremony ("256 possibilities").
+5. **35–40 min:** the Eighth Bit is bought and the byte forms in a short ceremony ("256 possibilities").
 6. **40–55 min:** two paths of light open: the player picks Storage or Logic first.
    - Storage (keeping, idle): Latch, Register, Memory Cell.
    - Logic (gates boost flips): NOT, AND, OR, and IF · THEN · ELSE (teaches branching; the branch that ran lights up under the byte).
@@ -103,8 +107,9 @@ Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (s
 - **Offline progress:** oscillators and memory cells keep earning while the game is closed (capped, 8 hours by default; Storage extends it).
 - **Boosters** (`js/boosters.js`, numbers in `CONFIG.boosters`): things to tap while playing. **Lightning** (a crackling arc
   with a zipping spark) gives a burst worth ~20 s of production; a **light pulse** (a breathing orb) gives ×7 production
-  for 30 s, with a timer under the counter. About one every 2 minutes, more often the faster you tap, never within
-  30 s of the last, one at a time; each vanishes after a few seconds. Crackle on appearing, zap on catching.
+  for 30 s, with a timer under the counter (about 1 in 5 boosters are light pulses). About one every 2 minutes,
+  more often the faster you tap, never within 30 s of the last, one at a time; each vanishes after a few seconds.
+  None appear during births, the byte ceremony, the fork or the fall. Crackle on appearing, zap on catching.
 - **Achievements:** eight, each with a one-line lesson, a toast and the chime (in `js/achievements.js`).
 - **Black hole reset (the soft prestige, "Deus Ex Machina"):** once the hook has appeared and the **Megabyte** goal
   (8,388,608 bits) is met in the current universe, the black hole draws close and can be touched. Falling in turns
