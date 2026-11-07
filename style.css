@@ -298,7 +298,8 @@ body.falling #choice {
   opacity: 0.9;
 }
 
-#mute {
+#mute,
+#music {
   width: 32px;
   height: 32px;
   padding: 0;
@@ -311,7 +312,8 @@ body.falling #choice {
   cursor: pointer;
 }
 
-#mute.muted {
+#mute.muted,
+#music.muted {
   color: rgba(207, 216, 255, 0.35);
   text-decoration: line-through;
 }

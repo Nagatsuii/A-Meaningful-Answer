@@ -456,6 +456,7 @@ const Sound = (function () {
   function resonance(bits) {
     if (!running()) return;
     const t = ctx.currentTime;
+    duckMusic(game(0.12 * bits) + 2.5);
     for (let i = 0; i < bits; i++) bell(SCALE[i] * 2, t + game(0.12 * i), LEVEL.note * 0.6, 2.6, 0.9);
   }
 
@@ -503,6 +504,7 @@ const Sound = (function () {
     if (!running()) return;
     const t = ctx.currentTime + game(delay || 0);
     const f = SCALE[index % SCALE.length];
+    duckMusic(game(delay || 0) + 3);
     bell(f * 2, t, LEVEL.note, 3.2, 1.2);
     pad(f, t, LEVEL.note * 0.25, 0.3, 0.5, 3);
   }
@@ -511,6 +513,7 @@ const Sound = (function () {
   function firstPulse(delay, travel) {
     if (!running()) return;
     const t = ctx.currentTime + game(delay);
+    duckMusic(game(delay + travel) + 3);
     bell(SCALE[0] * 2, t, LEVEL.note * 0.7, 2.5, 0.6);
     bell(SCALE[1] * 2, t + game(travel), LEVEL.note * 0.7, 3, 0.6);
   }
@@ -520,6 +523,7 @@ const Sound = (function () {
   function byteChord(waveDelays, chordDelay) {
     if (!running()) return;
     const t = ctx.currentTime;
+    duckMusic(game(chordDelay) + 8);
     waveDelays.forEach((d, i) => bell(SCALE[i] * 2, t + game(d), LEVEL.note * 0.55, 2.4, 0.8));
     SCALE.forEach((f, i) => {
       pad(f, t + game(chordDelay), LEVEL.note * 0.14, 1.8, 2.5, 5);
@@ -532,6 +536,7 @@ const Sound = (function () {
   function achievement() {
     if (!running()) return;
     const t = ctx.currentTime;
+    duckMusic(2.5);
     [587.33, 880, 1174.66, 1479.98].forEach((f, i) => bell(f, t + i * 0.06, LEVEL.chime * 0.55, 2.8, 2.4));
     const crackle = noiseSource(t, 0.18);
     const hiss = filter('highpass', 2500, 0.7);
@@ -591,6 +596,18 @@ const Sound = (function () {
     rushGain.connect(master);
   }
 
+  // ---------- sharing the engine with the music ----------
+
+  // music.js plays through the same engine and master volume. Null until sound has started.
+  function engine() {
+    return ctx ? { ctx: ctx, master: master, noise: noise } : null;
+  }
+
+  // Ask the music to step aside while a milestone or chime rings out.
+  function duckMusic(seconds) {
+    if (typeof Music !== 'undefined') Music.duck(seconds);
+  }
+
   // ---------- volume, mute, pausing ----------
 
   function setVolume(v) {
@@ -619,7 +636,7 @@ const Sound = (function () {
   }
 
   return {
-    unlock, update, setBits, setWarm, tap, purchase, affordable,
+    unlock, update, setBits, setWarm, tap, purchase, affordable, engine,
     bitBorn, firstPulse, byteChord, achievement, fall, boosterAppear, boosterCatch, resonance,
     setVolume, setMuted, getSettings, suspend, resume
   };

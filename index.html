@@ -20,8 +20,9 @@
        (After a black-hole reset, main.js swaps in "the data remembers" and the universe number.) -->
   <div id="opening" aria-hidden="true"><span class="neon">insufficient data</span></div>
 
-  <!-- Sound: mute button and volume slider -->
+  <!-- Sound: music on/off, mute button and volume slider -->
   <div id="sound-controls">
+    <button id="music" type="button" aria-pressed="true" aria-label="Turn music off">♫</button>
     <button id="mute" type="button" aria-pressed="false" aria-label="Mute sound">♪</button>
     <input id="volume" type="range" min="0" max="100" value="70" aria-label="Volume">
   </div>
@@ -90,6 +91,7 @@
   <script src="js/upgrades.js"></script>
   <script src="js/achievements.js"></script>
   <script src="js/audio.js"></script>
+  <script src="js/music.js"></script>
   <script src="js/render.js"></script>
   <script src="js/boosters.js"></script>
   <script src="js/ui.js"></script>

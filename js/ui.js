@@ -194,6 +194,18 @@ const UI = (function () {
       mute.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
     };
     showMuted(s.muted);
+    // The music button switches only the background music; sound effects carry on.
+    const music = document.getElementById('music');
+    const showMusic = isOn => {
+      music.classList.toggle('muted', !isOn);
+      music.setAttribute('aria-pressed', String(isOn));
+      music.setAttribute('aria-label', isOn ? 'Turn music off' : 'Turn music on');
+    };
+    showMusic(Music.isOn());
+    music.addEventListener('click', () => {
+      Music.setOn(!Music.isOn());
+      showMusic(Music.isOn());
+    });
     mute.addEventListener('click', () => {
       const muted = !Sound.getSettings().muted;
       Sound.setMuted(muted);

@@ -23,6 +23,7 @@ until you visit with `?dev=0`), by typing `devmode` on a keyboard, or by tapping
 
 - **Game speed** (1×, 2×, 5×, 10×, 100×) speeds up the whole game: oscillators, animations, births, the byte, the clock's ticking.
   A **TIME ×10** badge shows while it's not 1×. The setting is remembered on this device; `?dev=0` puts it back to 1×.
+- **Music** plays a chosen piece now ("Prelude in Light" or "Canon of Warm Light").
 - **Bits** adds 1,000 / 100,000 / 1,000,000 bits (milestones still arrive in order).
 - **Jump to** sets the game up just as a milestone happens, then reloads so it plays out:
   Second bit, Constellation (Third Bit), Bit 5 and Byte (Eighth Bit) are each ready to buy;
@@ -89,7 +90,8 @@ node tests/run.js boosters
 - `js/save.js` — saving and loading with localStorage
 - `js/upgrades.js` — the rules for buying upgrades and what they add up to
 - `js/achievements.js` — the achievements and what earns each one
-- `js/audio.js` — every sound, made in code with the Web Audio API (no sound files)
+- `js/audio.js` — every sound effect and the drone, made in code with the Web Audio API (no sound files)
+- `js/music.js` — the background music, written as notes and played live (one piece per universe)
 - `tools/balance-sim.js` — the balance simulator (not loaded by the game)
 - `tests/` — the browser tests (`run.js`, shared `helpers.js`, one file per feature in `suites/`)
 - `js/render.js` — draws the sky, the bit and its effects on the canvas

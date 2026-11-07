@@ -1,4 +1,5 @@
 // The mix: drone quietest, then taps and ticks, zaps and sparks, milestone notes, and achievement chimes loudest.
+// The background music sits under taps too (it's measured on its own, with everything else silent).
 // Measures what actually reaches the speakers, through an analyser.
 module.exports = {
   name: 'Sound mix order',
@@ -25,6 +26,7 @@ module.exports = {
       });
     });
     await g.page.mouse.click(5, 790); // a first click, to allow sound
+    await g.run(() => Music.setOn(false)); // the music is measured on its own at the end
     await g.waitReal(9);              // let the eight-note drone fade in
     const drone = await g.run(() => measure(5000));
     await g.run(() => { const real = Sound.setBits; real(0); Sound.setBits = () => {}; }); // silence the drone
@@ -37,11 +39,17 @@ module.exports = {
       note: await one(() => Sound.bitBorn(3, 0), 2500),
       chime: await one(() => Sound.achievement(), 2500)
     };
+    // The music alone: drone silenced, nothing else playing, all its parts in (eight bits, byte, a track).
+    await g.run(() => Music.setOn(true));
+    await g.waitReal(12);
+    level.music = await g.run(() => measure(8000));
     const shown = Object.fromEntries(Object.entries(level).map(([k, v]) => [k, Math.round(v * 10000) / 10000]));
     t.ok(level.drone < level.tap, 'the full drone is quieter than a tap', shown);
     t.ok(level.tap < level.zap, 'a tap is quieter than a purchase zap', shown);
     t.ok(level.zap < level.note, 'a zap is quieter than a milestone note', shown);
     t.ok(level.note < level.chime, 'an achievement chime is the loudest', shown);
+    t.ok(level.music < level.tap, 'the background music is quieter than a tap', shown);
+    t.ok(level.music > level.drone * 0.5, 'the music can actually be heard', shown);
     t.noErrors(g);
     await g.close();
   }

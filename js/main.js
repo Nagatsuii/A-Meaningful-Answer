@@ -740,6 +740,7 @@
     beginFall();
   });
 
+  Music.PIECES.forEach((p, i) => Dev.addTool('Music', p.name, () => Music.force(i)));
   Dev.addTool('Boosters', 'Lightning now', () => { Boosters.force(view, 'lightning'); Sound.boosterAppear('lightning'); });
   Dev.addTool('Boosters', 'Light pulse now', () => { Boosters.force(view, 'pulse'); Sound.boosterAppear('pulse'); });
 
@@ -825,6 +826,14 @@
     Sound.setWarm(state.universesCompleted > 0 || TEST_WARM);
     // The clock ticks in game time, so it speeds up with the game; streak timing stays real (it's your fingers).
     Sound.update(realDt, ready() ? Upgrades.flipsPerSecond(state) * Dev.timeScale() : 0);
+    // The music grows with the machine, and each universe has its own piece (see music.js).
+    Music.update({
+      bits: state.sparked ? view.stars.length : 0,
+      byte: state.byteFormed,
+      track: state.track,
+      universe: state.universesCompleted || (TEST_WARM ? 1 : 0),
+      quiet: !state.sparked || !!view.fall
+    });
     view.showRule = Upgrades.owned(state, 'ifThenElse') > 0;
 
     // Refresh the counter and menu a few times a second (often enough to look live, cheap on phones).

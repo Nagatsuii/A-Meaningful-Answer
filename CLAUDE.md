@@ -32,6 +32,7 @@ The game is called **A Meaningful Answer**, a nod to Asimov's "The Last Question
 ### Dev tools (hidden from normal players)
 
 - Open with `?dev=1` (remembered; `?dev=0` turns it off and resets the speed), by typing `devmode`, or with 5 quick taps in the top-left corner on a phone.
+- **Music**: play either piece now (to hear a later universe's music).
 - **Game speed** 1×–100×: one central time scale, `Dev.timeScale()`. A "TIME ×N" badge shows whenever it isn't 1×.
 - Helpers: add bits; jump to a milestone (second bit, constellation, bit 5, byte, track fork, hook, black hole ready);
   make a booster appear now (lightning or light pulse);
@@ -68,6 +69,15 @@ The game is called **A Meaningful Answer**, a nod to Asimov's "The Last Question
 - The drone has one note per bit from a D major scale: cold and airy in the first universe, warm after a black-hole reset.
 - Sound starts on the player's first touch, click or key press (browser autoplay rules). Mute and volume controls sit top right.
 - Loudness of every sound is in the `LEVEL` list at the top of `js/audio.js`.
+- **Background music** (`js/music.js`): light baroque lines (harpsichord broken chords, a singing melody, a second
+  voice) over a soft techno pulse (muffled kick, ticking hats, pumping bass) and ambient pads, in D major like the drone.
+  It's written as notes and played live, and it grows with the machine: pads at one bit, harpsichord at two (full
+  running figure at three), the pulse at five, bass and melody at the byte, the second voice once a track is chosen.
+  Each universe has its own piece, a little more classical and intense: "Prelude in Light" (first universe),
+  "Canon of Warm Light" (later universes, adds driving strings). Add a piece to `PIECES` for a new universe.
+  The music sits under taps in the mix, dips for milestone notes and chimes (`Music.duck`), is silent in the dark
+  opening and fades in the fall. A ♫ button beside the mute button turns just the music off (remembered).
+  Its loudness is in `LEVEL` at the top of `js/music.js`.
 
 ## Core loop
 
@@ -135,7 +145,8 @@ Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (s
 | `js/save.js` | the save format (`Save.fresh()` lists every field) and loading/saving |
 | `js/upgrades.js` | upgrade rules, and `Upgrades.step`: the single place that decides what one counting step earns |
 | `js/achievements.js` | achievements and their tests |
-| `js/audio.js` | every sound |
+| `js/audio.js` | every sound effect and the drone |
+| `js/music.js` | the background music: its pieces, instruments and layers |
 | `js/render.js` | all canvas drawing (except boosters) |
 | `js/boosters.js` | boosters: when they appear, catching them, the boost, and drawing them |
 | `js/ui.js` | counter, menu, notes, choice buttons, dialogs, sound controls |
