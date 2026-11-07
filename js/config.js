@@ -82,6 +82,24 @@ const CONFIG = {
       requires: 'secondBit',   // only appears once you own the second bit
       maxOwned: 6              // bits 3, 4, 5, 6, 7 and 8
     },
+    // Universe 2 onwards (the Memories phase): a card that records your tapping and plays it back.
+    // Buy it, tap `holes` times to punch the card, and from then on it repeats your rhythm by itself.
+    // Each card owned makes every hole it reads count as one more tap.
+    punchCard: {
+      name: 'Punch Card',
+      effect: 'records your next {x:holes} taps, then plays your rhythm back by itself',
+      effects: ['records your next {x:holes} taps, then plays your rhythm back by itself',
+        'another card in the deck: every hole read counts as one more tap'],
+      lesson: 'In 1804 Jacquard\'s loom read its patterns from punched cards. A card that remembers what to do is a program.',
+      baseCost: 2600,
+      costGrowth: 2.4,
+      revealAt: 0,
+      requires: 'secondBit',   // appears once the second bit has joined
+      requiresUniverse: 1,     // only after the first black hole: it belongs to universe 2's memories
+      holes: 12,               // taps recorded onto the card
+      gapMin: 0.18,            // the playback never runs faster than this between holes (seconds)...
+      gapMax: 1.5              // ...or waits longer than this, however slowly you tapped while recording
+    },
     // Unlocked by the 5th bit: the mid-stretch surprise.
     resonance: {
       name: 'Resonance',
@@ -218,6 +236,28 @@ const CONFIG = {
   offlineEfficiency: 1,        // share of normal speed earned while away (0.5 = half speed)
   offlineMessageMinSeconds: 60, // only say "while you were away" after at least this long
   offlineMessageSeconds: 9,    // how long that note stays on screen
+
+  // --- Memories: universe 2 rebuilds the machine through computing history ---
+  // In the second universe (and later ones), a brief abacus comes before the first spark, and each bit
+  // that joins brings back a moment from the history of computing. `at` = how many bits there are then.
+  abacus: {
+    beads: 9,                  // beads on each rod; the next tap after the last one carries into the tens
+    carrySeconds: 2.4,         // the carry plays out...
+    fadeSeconds: 2.2           // ...then the abacus fades and the first bit's glow appears
+  },
+  memories: [
+    { id: 'loom', at: 2, text: '1804 · Jacquard\'s loom weaves silk\nfrom punched cards: a hole, or no hole.\nOne bit, in cardboard.' },
+    { id: 'engine', at: 3, text: '1837 · Charles Babbage designs\nthe Analytical Engine: a mill to calculate,\na store to remember.' },
+    { id: 'lovelace', at: 4, text: '1843 · Ada Lovelace writes the first program,\nfor a machine never built,\nand imagines it making music.' },
+    { id: 'hollerith', at: 5, text: '1890 · Hollerith\'s punched cards count the census.\n(The last count took eight years by hand.)\nThe constellation resonates. Something new can be built.' },
+    { id: 'eniac', at: 6, text: '1945 · ENIAC fills a room. Six women program it by hand:\nKay McNulty, Betty Jennings, Betty Snyder,\nMarlyn Wescoff, Fran Bilas and Ruth Lichterman.' },
+    { id: 'johnson', at: 7, text: '1962 · Before John Glenn will orbit the Earth,\nhe asks Katherine Johnson\nto check the computer\'s numbers by hand.' },
+    { id: 'byte', at: 8, text: 'One byte. 256 possibilities: 0 to 255.\n1956 · At IBM, Werner Buchholz\ngives the byte its name.' }
+  ],
+  // The first time a punch card plays back by itself.
+  punchMemory: { id: 'vaughan', text: 'Your first stored program.\n1960s · Dorothy Vaughan teaches her team FORTRAN,\npunched onto cards, before NASA\'s IBM machines arrive.' },
+  abacusMemory: { id: 'abacus', text: 'A carry, made by hand.\nFor thousands of years, people counted in tens with beads.\nYour bits will count in twos.' },
+  memoryNoteSeconds: 13,
 
   // --- The black hole reset (falling in starts a new universe) ---
   knowledge: {

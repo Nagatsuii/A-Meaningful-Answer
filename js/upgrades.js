@@ -3,7 +3,7 @@
 
 const Upgrades = {
   // The order upgrades are listed in the menu.
-  ids: ['amplifier', 'oscillator', 'resonance', 'secondBit', 'nextBit',
+  ids: ['amplifier', 'oscillator', 'resonance', 'secondBit', 'nextBit', 'punchCard',
     'latch', 'register', 'memoryCell',     // Storage track
     'notGate', 'andGate', 'orGate', 'ifThenElse'], // Logic track
 
@@ -36,6 +36,7 @@ const Upgrades = {
     if (u.track && state.track !== u.track) return false;
     if (u.requires && this.owned(state, u.requires) === 0) return false;  // e.g. Next Bit needs the second bit
     if (u.requiresBits && this.bitCount(state) < u.requiresBits) return false; // e.g. Resonance needs 5 bits
+    if (u.requiresUniverse && (state.universesCompleted || 0) < u.requiresUniverse) return false; // e.g. the Punch Card
     return this.owned(state, id) > 0 || state.lifetimeBits >= CONFIG.upgrades[id].revealAt;
   },
 
@@ -159,6 +160,25 @@ const Upgrades = {
     return total / size;
   },
 
+  // ---------- the Punch Card (universe 2+) ----------
+
+  // Has the card been fully punched (all its holes recorded)?
+  punchReady(state) {
+    return this.owned(state, 'punchCard') > 0 && (state.punch || []).length >= CONFIG.upgrades.punchCard.holes;
+  },
+
+  // How long one pass through the card takes, in seconds (the gaps you tapped, kept within limits).
+  punchLoopSeconds(state) {
+    const u = CONFIG.upgrades.punchCard;
+    return state.punch.slice(0, u.holes).reduce((sum, g) => sum + Math.max(u.gapMin, Math.min(u.gapMax, g)), 0);
+  },
+
+  // Taps per second the card plays back. Each card owned makes every hole count as one more tap.
+  punchTapsPerSecond(state) {
+    if (!this.punchReady(state)) return 0;
+    return (CONFIG.upgrades.punchCard.holes / this.punchLoopSeconds(state)) * this.owned(state, 'punchCard');
+  },
+
   // ---------- Storage track ----------
 
   // Bits per second from memory cells: earned always, even while away.
@@ -192,6 +212,7 @@ const Upgrades = {
   // Bits per second earned without tapping.
   bitsPerSecond(state) {
     const perFlip = CONFIG.upgrades.oscillator.bitsPerFlip;
-    return this.flipsPerSecond(state) * this.averageStepEarning(state, perFlip, 'osc') + this.trickle(state);
+    return this.flipsPerSecond(state) * this.averageStepEarning(state, perFlip, 'osc') + this.trickle(state) +
+      this.punchTapsPerSecond(state) * this.averageStepEarning(state, this.bitsPerTap(state), 'tap');
   }
 };

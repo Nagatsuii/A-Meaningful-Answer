@@ -40,6 +40,18 @@ const Achievements = {
       done: state => !!state.track
     },
     {
+      id: 'storedProgram',
+      name: 'Stored Program',
+      text: 'A punch card played your rhythm back: instructions kept, then followed.',
+      done: state => !!state.punchPlayed
+    },
+    {
+      id: 'livingMemory',
+      name: 'Living Memory',
+      text: 'Every moment of computing history, from the abacus to the byte, remembered.',
+      done: state => (state.memoriesSeen || []).length >= CONFIG.memories.length + 2 // + the abacus and the punch card
+    },
+    {
       id: 'megabit',
       name: 'Megabit',
       text: '1,048,576 bits earned: 1,024 × 1,024.',

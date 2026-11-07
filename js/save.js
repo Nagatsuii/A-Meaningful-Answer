@@ -20,6 +20,10 @@ const Save = {
       // it must carry this number over into the new game. Above 0, the drone turns warm.
       universesCompleted: 0,
       knowledge: 0,   // carried from universe to universe: each point boosts all earning (see CONFIG.knowledge)
+      abacus: 0,      // universe 2+: beads slid on the abacus before the first spark (see CONFIG.abacus)
+      punch: [],      // the punch card: the gaps (seconds) between the taps you recorded onto it
+      memoriesSeen: [], // ids of the history moments seen so far (carried from universe to universe)
+      punchPlayed: false, // has a punch card played back by itself yet (this universe)?
       lastSeen: null  // the clock time (in milliseconds) the game was last running
     };
   },

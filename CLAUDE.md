@@ -34,7 +34,8 @@ The game is called **A Meaningful Answer**, a nod to Asimov's "The Last Question
 - Open with `?dev=1` (remembered; `?dev=0` turns it off and resets the speed), by typing `devmode`, or with 5 quick taps in the top-left corner on a phone.
 - **Music**: play either piece now (to hear a later universe's music).
 - **Game speed** 1×–100×: one central time scale, `Dev.timeScale()`. A "TIME ×N" badge shows whenever it isn't 1×.
-- Helpers: add bits; jump to a milestone (second bit, constellation, bit 5, byte, track fork, hook, black hole ready);
+- Helpers: add bits; jump to a milestone (second bit, constellation, bit 5, byte, track fork, hook, black hole ready,
+  universe 2's abacus, universe 2 with a Punch Card ready);
   make a booster appear now (lightning or light pulse);
   fall into the black hole now; reset the save. Add more with `Dev.addTool(group, label, run)` (the dev helpers
   section near the bottom of `main.js`). Jumps use `devJump()`, which builds the save for that moment from CONFIG totals and reloads.
@@ -120,11 +121,37 @@ Re-check pacing after changing numbers with `node tools/balance-sim.js --all` (s
   for 30 s, with a timer under the counter (about 1 in 5 boosters are light pulses). About one every 2 minutes,
   more often the faster you tap, never within 30 s of the last, one at a time; each vanishes after a few seconds.
   None appear during births, the byte ceremony, the fork or the fall. Crackle on appearing, zap on catching.
-- **Achievements:** eight, each with a one-line lesson, a toast and the chime (in `js/achievements.js`).
+- **Achievements:** ten, each with a one-line lesson, a toast and the chime (in `js/achievements.js`).
 - **Black hole reset (the soft prestige, "Deus Ex Machina"):** once the hook has appeared and the **Megabyte** goal
   (8,388,608 bits) is met in the current universe, the black hole draws close and can be touched. Falling in turns
   this universe's bits into **Knowledge** (square root of lifetime bits ÷ 80,000: about 10 at the Megabyte), each point +10% to all earning, forever.
   Only achievements, Knowledge and `universesCompleted` survive. The new universe opens with warm neon: "the data remembers" and the universe number.
+
+## Toward a 2-hour demo: universe 2 (being built, phase by phase)
+
+The owner chose a hybrid of three ideas for what comes after the first fall, built one phase at a time with a
+playable update after each:
+
+1. **Memories (built).** Universe 2 replays the climb to the byte (faster, thanks to Knowledge and the Punch Card)
+   as a tour of computing history:
+   - **The abacus:** before the first spark, an abacus (tens and ones rods). Each tap slides a bead; the tenth tap
+     carries into the tens with a gold pulse ("A carry, made by hand… Your bits will count in twos"). Then it fades
+     and the glow appears. Tap anywhere during it. `state.abacus` counts beads; numbers in `CONFIG.abacus`.
+   - **A memory with each bit** (`CONFIG.memories`, shown in a sepia note): 2 Jacquard's loom (1804), 3 Babbage's
+     Analytical Engine (1837), 4 Ada Lovelace (1843), 5 Hollerith's census cards (1890, with bit 5's resonance),
+     6 ENIAC and its six programmers (1945), 7 Katherine Johnson and John Glenn (1962), 8 the byte named by
+     Werner Buchholz (1956). Seen memories are kept in `state.memoriesSeen` across universes.
+   - **Punch Card** (upgrade, universe 2+, after the second bit): buy it, tap 12 times to punch it, and it plays
+     your rhythm back by itself (each card owned = each hole counts as one more tap). Its first playback brings
+     Dorothy Vaughan's memory. It keeps playing while you're away. `state.punch` holds the recorded gaps.
+   - Achievements: **Stored Program** (a card played back) and **Living Memory** (all nine memories).
+   - Pacing (simulator, `--universe 2`): the fall at ~1:37, then universe 2's byte ~14 min and fork ~17 min
+     later, so the fork lands at about 1:54 for the steady player.
+2. **Ignition (next).** In universe 2 the locked track opens: build a Register (Storage) and an Adder (Logic:
+   half adder, full adder, the carry); they spiral together and one tap ignites the processor (~2:00–2:10).
+   Mary Jackson's memory belongs here.
+3. **Compression (after that).** Memory fills; fold repeating patterns (run-length first); the first glimpse of
+   the Library of Everything; a hook toward the next black hole.
 
 ## Bigger picture (don't build yet)
 

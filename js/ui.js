@@ -129,8 +129,10 @@ const UI = (function () {
   }
 
   // Show a short note under the counter for a few seconds.
-  function showNote(text, seconds) {
+  // kind 'memory': a moment from computing history (universe 2+), shown in warm sepia.
+  function showNote(text, seconds, kind) {
     noteEl.textContent = text;
+    noteEl.classList.toggle('memory', kind === 'memory');
     noteEl.classList.add('show');
     clearTimeout(noteTimer);
     noteTimer = setTimeout(() => noteEl.classList.remove('show'), seconds * 1000);

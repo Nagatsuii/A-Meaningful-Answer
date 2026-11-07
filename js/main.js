@@ -60,8 +60,16 @@
     hookPoints: null, // where the locked doorway and the black hole sit
     holeNear: 0,      // 0 = the black hole is far away; 1 = close enough to fall into
     fall: null,       // { start, origins } while the stars spiral into the black hole
-    starFade: 1       // the stars fade as they fall in
+    starFade: 1,      // the stars fade as they fall in
+    abacus: null,     // universe 2+: { beads: [x positions], carryAt, doneAt } while the abacus is showing
+    punchRead: null,  // { index, at }: the punch card hole read most recently (it flashes)
+    punchAt: 0        // seconds into the current gap of the punch card's playback
   };
+
+  // Came back after the abacus's carry but before the first spark: skip straight to the glow.
+  if (!state.sparked && state.universesCompleted > 0 && state.abacus > CONFIG.abacus.beads) {
+    view.abacus = { carryAt: null, doneAt: -100 };
+  }
 
   // Timers for the oscillators (automatic flipping).
   let flipProgress = 0;     // builds up to 1, then the oscillators step the counter once
@@ -196,6 +204,8 @@
     // The very first tap: the bit is born. This tap doesn't add to the counter.
     if (!state.sparked) {
       if (view.time < CONFIG.darknessSeconds) return; // let the opening finish first
+      if (abacusDue()) { abacusTap(); return; }       // universe 2+: count on the abacus first
+      if (view.abacus && view.time - view.abacus.doneAt < CONFIG.abacus.fadeSeconds) return; // it's still fading away
       state.sparked = true;
       state.value = 1;
       const star = view.stars[0];
@@ -216,6 +226,7 @@
     earn(countUp(1, Upgrades.bitsPerTap(state), 'tap'));
     syncStars();
     showBranch();
+    recordPunch();
     Render.ripple(view, 0, 0.16, 46); // a soft, quiet ring
     // A soft tick that climbs in pitch during a fast streak; at the top, a burst of sparks.
     if (Sound.tap()) Render.sparkle(view, 0);
@@ -229,6 +240,9 @@
     Sound.purchase(cost); // a zap of current; pricier upgrades crackle longer
     if (id === 'secondBit' || id === 'nextBit') {
       addBit();
+    } else if (id === 'punchCard' && Upgrades.owned(state, 'punchCard') === 1) {
+      state.punch = []; // a blank card: your next taps punch its holes
+      UI.showNote(`A blank punch card.\nTap ${CONFIG.upgrades.punchCard.holes} times, in any rhythm you like,\nand it will remember.`, 10);
     } else {
       Render.ripple(view, 0, 0.3, 80); // the bit glows a little wider when it gains something new
     }
@@ -287,7 +301,9 @@
 
     if (!c.noted && t >= gather + sweep * 0.7) {
       c.noted = true;
-      UI.showNote('One byte.\nEight bits, working as one.\n256\u00a0possibilities: 0\u00a0to\u00a0255', 12);
+      const memory = memoryFor(8);
+      if (memory) showMemory(memory);
+      else UI.showNote('One byte.\nEight bits, working as one.\n256\u00a0possibilities: 0\u00a0to\u00a0255', 12);
     }
 
     if (t >= gather + sweep + CONFIG.byteRestSeconds) {
@@ -311,17 +327,22 @@
   function birthFinished(index) {
     view.birth = null;
     const n = index + 1; // how many bits there are now
+    const memory = memoryFor(n); // universe 2+: each bit brings back a moment from computing history
+    if (n === CONFIG.resonanceMomentAtBit) {
+      // The mid-stretch moment (in every universe): the threads flare and stay brighter,
+      // the notes ring upward, and Resonance appears in the menu.
+      view.flareAt = view.time;
+      view.stars.forEach((s, i) => Render.ripple(view, i, 0.25, 50));
+      Sound.resonance(n);
+    }
     if (n === 8) {
       // No note here: the byte forming has its own (see runCeremony).
+    } else if (memory) {
+      showMemory(memory);
     } else if (n === 2) {
       // "\n" starts a new line; "\u00a0" is a space that never breaks, so the four states stay together.
       UI.showNote('Two bits.\nFour possible states:\n00\u00a0·\u00a001\u00a0·\u00a010\u00a0·\u00a011', 10);
     } else if (n === CONFIG.resonanceMomentAtBit) {
-      // The mid-stretch moment: the threads flare and stay brighter, the notes ring upward,
-      // and Resonance appears in the menu.
-      view.flareAt = view.time;
-      view.stars.forEach((s, i) => Render.ripple(view, i, 0.25, 50));
-      Sound.resonance(n);
       UI.showNote(`${NUMBER_WORDS[n]} bits. ${Math.pow(2, n)} possible states.\nThe constellation resonates.\nSomething new can be built.`, 10);
     } else if (n > 2) {
       // e.g. "Three bits. 8 possible states: 000 to 111"
@@ -359,13 +380,91 @@
     if (ready()) earn(Upgrades.trickle(state) * dt);
   }
 
+  // ---------- universe 2+: memories, the abacus and the punch card ----------
+
+  // The history moment for this many bits, in the second universe and later (null in the first).
+  function memoryFor(bits) {
+    if (!state.universesCompleted) return null;
+    return CONFIG.memories.find(m => m.at === bits) || null;
+  }
+
+  // Show a memory in its warm, sepia note, and remember that it's been seen (in every universe after).
+  function showMemory(memory) {
+    UI.showNote(memory.text, CONFIG.memoryNoteSeconds, 'memory');
+    if (!state.memoriesSeen.includes(memory.id)) state.memoriesSeen.push(memory.id);
+  }
+
+  // In the second universe and later, the first taps count on an abacus before the bit sparks:
+  // one bead per tap on the ones rod, and the tap after the last bead carries into the tens.
+  function abacusDue() {
+    return state.universesCompleted > 0 && !state.sparked && state.abacus <= CONFIG.abacus.beads;
+  }
+
+  function abacusTap() {
+    state.abacus++;
+    if (!view.abacus) view.abacus = { carryAt: null, doneAt: null };
+    Sound.tap();
+    if (state.abacus > CONFIG.abacus.beads) {
+      // Ten: the nine ones slide home and one bead on the tens rod slides across. A carry, by hand.
+      view.abacus.carryAt = view.time;
+      view.abacus.doneAt = view.time + CONFIG.abacus.carrySeconds;
+      Sound.firstPulse(0, 0.5);
+      showMemory(CONFIG.abacusMemory);
+    }
+    Save.save(state);
+  }
+
+  // Punching the card: while it still has blank holes, each tap records the gap since the one before.
+  let lastTapAt = null;
+  function recordPunch() {
+    const time = performance.now() / 1000; // your fingers' rhythm, in real time
+    const u = CONFIG.upgrades.punchCard;
+    if (Upgrades.owned(state, 'punchCard') > 0 && state.punch.length < u.holes) {
+      state.punch.push(lastTapAt === null ? 0.5 : time - lastTapAt);
+      view.punchRead = { index: state.punch.length - 1, at: view.time };
+      if (state.punch.length === u.holes) {
+        view.punchAt = 0;
+        view.punchIndex = 0;
+        UI.showNote('The card is punched.\nListen: it plays your rhythm back.', 8);
+      }
+    }
+    lastTapAt = time;
+  }
+
+  // The card plays back: it waits each recorded gap, then the next hole counts as a tap
+  // (one tap for each card owned). The stars only visibly change a few times a second, as with oscillators.
+  function runPunch(dt) {
+    if (!Upgrades.punchReady(state) || !ready()) return;
+    const u = CONFIG.upgrades.punchCard;
+    const gap = i => Math.max(u.gapMin, Math.min(u.gapMax, state.punch[i]));
+    view.punchIndex = view.punchIndex || 0;
+    view.punchAt += dt;
+    while (view.punchAt >= gap(view.punchIndex)) {
+      view.punchAt -= gap(view.punchIndex);
+      earn(countUp(Upgrades.owned(state, 'punchCard'), Upgrades.bitsPerTap(state), 'tap'));
+      view.punchRead = { index: view.punchIndex, at: view.time };
+      view.punchIndex = (view.punchIndex + 1) % u.holes;
+      if (!state.punchPlayed) {
+        state.punchPlayed = true;
+        showMemory(CONFIG.punchMemory);
+      }
+      if (view.time - lastVisibleFlip >= 1 / CONFIG.maxVisibleFlipsPerSecond) {
+        lastVisibleFlip = view.time;
+        syncStars();
+        showBranch();
+        Render.ripple(view, 0, 0.07, 34);
+      }
+    }
+  }
+
   // Offline progress: oscillators and memory cells kept working while the game wasn't running
   // (page closed, tab in the background, phone asleep). Give the player those bits now.
   // Storage upgrades make this count for longer (latches) and pay more (registers).
   function catchUp(secondsAway) {
     const rate = Upgrades.flipsPerSecond(state);
     const trickle = Upgrades.trickle(state);
-    if ((rate <= 0 && trickle <= 0) || !ready()) return;
+    const punch = Upgrades.punchTapsPerSecond(state); // the punch card keeps playing too
+    if ((rate <= 0 && trickle <= 0 && punch <= 0) || !ready()) return;
 
     const hours = Upgrades.offlineHours(state);
     const maxSeconds = hours * 3600;
@@ -375,6 +474,8 @@
     const steps = Math.floor(flipProgress);
     flipProgress -= steps;
     if (steps > 0) earned += countUp(steps, CONFIG.upgrades.oscillator.bitsPerFlip, 'osc');
+    const punchTaps = Math.floor(punch * counted);
+    if (punchTaps > 0) earned += countUp(punchTaps, Upgrades.bitsPerTap(state), 'tap');
     if (earned <= 0) return;
 
     const added = earn(earned, true); // a booster never multiplies time away
@@ -540,6 +641,7 @@
     next.knowledge = (state.knowledge || 0) + Upgrades.knowledgeFromFall(state);
     next.achievements = state.achievements;
     next.universesCompleted = (state.universesCompleted || 0) + 1;
+    next.memoriesSeen = state.memoriesSeen;
     // Replace the old game completely, so nothing (like saving as the page closes) can bring it back.
     for (const key of Object.keys(state)) delete state[key];
     Object.assign(state, next);
@@ -629,7 +731,7 @@
     const x = event.clientX - rect.left, y = event.clientY - rect.top;
     if (catchBooster(x, y)) return;
     if (hookTapped(x, y)) return;
-    if (isOnBits(x, y)) tap();
+    if (abacusDue() || isOnBits(x, y)) tap(); // the abacus can be tapped anywhere
   });
 
   // Space or Enter taps too, for keyboard players.
@@ -684,6 +786,7 @@
     next.knowledge = state.knowledge;
     next.achievements = state.achievements;
     next.universesCompleted = state.universesCompleted;
+    next.memoriesSeen = state.memoriesSeen;
     next.stats = state.stats;
     Object.assign(next, { sparked: true, value: 0, lastSeen: Date.now() }, fields);
     for (const key of Object.keys(state)) delete state[key];
@@ -740,6 +843,24 @@
     beginFall();
   });
 
+  // Universe 2's opening: the abacus, then the bits again with their memories. Knowledge as after a first fall.
+  Dev.addTool('Jump to', 'Universe 2 (abacus)', () => {
+    const next = Save.fresh();
+    next.knowledge = Math.max(state.knowledge || 0, 10);
+    next.achievements = state.achievements;
+    next.universesCompleted = Math.max(1, state.universesCompleted || 0);
+    next.memoriesSeen = state.memoriesSeen;
+    for (const key of Object.keys(state)) delete state[key];
+    Object.assign(state, next);
+    Save.save(state);
+    location.reload();
+  });
+  // Universe 2 with two bits and a Punch Card ready to buy.
+  Dev.addTool('Jump to', 'Punch card', () => devJump({
+    universesCompleted: Math.max(1, state.universesCompleted || 0), knowledge: Math.max(state.knowledge || 0, 10),
+    abacus: CONFIG.abacus.beads + 1, bits: CONFIG.upgrades.punchCard.baseCost, lifetimeBits: CONFIG.upgrades.secondBit.baseCost,
+    upgrades: later
+  }));
   Music.PIECES.forEach((p, i) => Dev.addTool('Music', p.name, () => Music.force(i)));
   Dev.addTool('Boosters', 'Lightning now', () => { Boosters.force(view, 'lightning'); Sound.boosterAppear('lightning'); });
   Dev.addTool('Boosters', 'Light pulse now', () => { Boosters.force(view, 'pulse'); Sound.boosterAppear('pulse'); });
@@ -811,6 +932,7 @@
 
     runOscillators(dt);
     runMemory(dt);
+    runPunch(dt);
     checkForNewBits();
     runCeremony();
     runChoice();

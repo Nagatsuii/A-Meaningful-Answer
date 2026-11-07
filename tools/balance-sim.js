@@ -18,6 +18,8 @@
 //   node tools/balance-sim.js --all                   a summary table: both tracks × 1, 2 and 4 taps a second
 //   node tools/balance-sim.js --try trial.json        try numbers without editing config.js (see below)
 //   node tools/balance-sim.js --boosters off          leave boosters out; --catch 0.5 catches half of them; --seed 7
+//   node tools/balance-sim.js --universe 2 --all      the second universe: Knowledge from a first fall (--knowledge 10),
+//                                                     the abacus before the spark, and the Punch Card
 //
 // A trial file holds only the numbers you want to change, in the same shape as CONFIG. For example:
 //   { "hookAt": 250000, "upgrades": { "amplifier": { "baseCost": 20 } } }
@@ -45,6 +47,8 @@ const MAX_HOURS = Number(option('--hours', 4)); // stop after this much play tim
 const BOOSTERS = option('--boosters', 'on') !== 'off';
 const CATCH = Number(option('--catch', 0.75));   // share of boosters the player catches
 const SEED = Number(option('--seed', 1));
+const UNIVERSE = Number(option('--universe', 1));
+const KNOWLEDGE = Number(option('--knowledge', UNIVERSE > 1 ? 10 : 0)); // about 10 at the first Megabyte
 
 // A repeatable random number generator, so the same settings always give the same result.
 function randomFrom(seed) {
@@ -113,8 +117,10 @@ function playOnce(taps, track) {
   let boostEnds = -1, lastBooster = -Infinity, boostersCaught = 0;
   const state = {
     sparked: true, bits: 0, lifetimeBits: 0, value: 1, upgrades: {},
-    track: null, byteFormed: false, hookSeen: false, stats: { taps: 0, carries: 0, wraps: 0 }
+    track: null, byteFormed: false, hookSeen: false, stats: { taps: 0, carries: 0, wraps: 0 },
+    universesCompleted: UNIVERSE - 1, knowledge: KNOWLEDGE, punch: []
   };
+  const holes = CONFIG.upgrades.punchCard.holes;
   const events = [];
   const note = (t, what) => events.push({ t, what });
 
@@ -140,8 +146,10 @@ function playOnce(taps, track) {
 
   const dt = 0.1;                 // simulate in tenths of a second
   let t = CONFIG.darknessSeconds + 0.5 + CONFIG.birthSeconds; // the opening, the first tap, the first birth
+  // Universe 2+: the abacus first (one tap per bead, then the carry plays and it fades away).
+  if (UNIVERSE > 1) t += (CONFIG.abacus.beads + 1) / taps + CONFIG.abacus.carrySeconds + CONFIG.abacus.fadeSeconds;
   note(t, 'first bit alive');
-  let waiting = 0, tapsDue = 0, stepsDue = 0, tick = 0;
+  let waiting = 0, tapsDue = 0, stepsDue = 0, tick = 0, punchDue = 0;
   const firstBought = {};
 
   while (t < MAX_HOURS * 3600) {
@@ -155,6 +163,19 @@ function playOnce(taps, track) {
     tapsDue += taps * dt;
     while (tapsDue >= 1) {
       tapsDue--;
+      const r = Upgrades.step(state, state.value, Upgrades.bitsPerTap(state), 'tap');
+      state.value = r.next;
+      earn(r.gain);
+      // A Punch Card still being punched records this tap (the gap is the player's own rhythm).
+      if (Upgrades.owned(state, 'punchCard') > 0 && state.punch.length < holes) {
+        state.punch.push(1 / taps);
+        if (state.punch.length === holes) note(t, 'punch card plays back');
+      }
+    }
+    // The punch card playing your rhythm back: each hole counts as a tap for every card owned.
+    punchDue += Upgrades.punchTapsPerSecond(state) * dt;
+    while (punchDue >= 1) {
+      punchDue--;
       const r = Upgrades.step(state, state.value, Upgrades.bitsPerTap(state), 'tap');
       state.value = r.next;
       earn(r.gain);
@@ -217,15 +238,21 @@ function playOnce(taps, track) {
     for (const id of Upgrades.ids) {
       if (!Upgrades.isRevealed(state, id)) continue;
       const cost = Upgrades.cost(state, id);
+      // A blank Punch Card earns nothing until it's punched; judge it as if it were (the player will punch it).
+      const blank = id === 'punchCard' && state.punch.length < holes;
+      const realPunch = state.punch;
+      if (blank) state.punch = new Array(holes).fill(1 / taps);
       state.upgrades[id] = Upgrades.owned(state, id) + 1; // try owning one more...
       const gain = income() - current;
       state.upgrades[id]--;                               // ...and put it back
+      if (blank) state.punch = realPunch;
       if (gain <= 0) continue;                            // offline-only upgrades don't help here
       if (!best || cost / gain < best.payback) best = { id, cost, payback: cost / gain };
     }
     if (best && state.bits >= best.cost) {
       if (best.id === 'secondBit' || best.id === 'nextBit') { buyBit(best.id); continue; }
       Upgrades.buy(state, best.id);
+      if (best.id === 'punchCard' && Upgrades.owned(state, 'punchCard') === 1) state.punch = [];
       if (!firstBought[best.id]) {
         firstBought[best.id] = true;
         note(t, `first ${CONFIG.upgrades[best.id].name} (${best.cost.toLocaleString()} bits)`);

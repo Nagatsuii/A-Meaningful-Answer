@@ -72,6 +72,12 @@ body {
   transition: opacity 1.5s ease;
 }
 
+/* A memory from computing history (universe 2 onwards): warm sepia, like an old photograph. */
+#note.memory {
+  color: #f1d9a8;
+  text-shadow: 0 0 12px rgba(240, 190, 110, 0.35);
+}
+
 #note.show {
   opacity: 1;
 }

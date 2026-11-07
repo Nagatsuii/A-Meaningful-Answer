@@ -28,6 +28,8 @@ until you visit with `?dev=0`), by typing `devmode` on a keyboard, or by tapping
 - **Jump to** sets the game up just as a milestone happens, then reloads so it plays out:
   Second bit, Constellation (Third Bit), Bit 5 and Byte (Eighth Bit) are each ready to buy;
   Track fork (paths open), Hook, Black hole ready. Knowledge, achievements and the universe count are kept.
+  **Universe 2 (abacus)** starts universe 2 from the dark (with 10 Knowledge), and **Punch card** starts universe 2
+  with two bits and a Punch Card ready to buy.
 - **Boosters** makes a lightning bolt or a light pulse appear right now.
 - **Black hole → Fall in now** starts the fall straight away, from wherever you are.
 - **Save** wipes the save.
@@ -41,6 +43,13 @@ Progress made at test speed is saved like normal progress, so use `?reset` after
 Add `?warm` to hear the warm drone of a later universe (normally it only turns warm after a black-hole
 reset, which isn't built yet).
 
+## Universe 2: Memories
+
+After the first fall into the black hole, universe 2 rebuilds the machine through computing history: an abacus
+before the first spark, a moment from history with each new bit (Jacquard's loom, Babbage, Ada Lovelace,
+Hollerith, ENIAC's programmers, Katherine Johnson, the byte), and a **Punch Card** that records your tapping and
+plays it back by itself.
+
 ## Checking the balance
 
 `tools/balance-sim.js` plays the game's real rules with a modelled player and prints when each milestone
@@ -50,7 +59,8 @@ arrives. It needs [Node.js](https://nodejs.org); the game itself doesn't.
 node tools/balance-sim.js --all
 ```
 
-That prints a table for both tracks at 1, 2 and 4 taps a second. Other options: `--taps 3`, `--track logic`,
+That prints a table for both tracks at 1, 2 and 4 taps a second. Add `--universe 2` for the second universe
+(10 Knowledge, the abacus and the Punch Card). Other options: `--taps 3`, `--track logic`,
 and `--try trial.json` to test numbers without editing `config.js` (a trial file lists only what changes,
 e.g. `{ "hookAt": 250000 }`). The comments at the top of the file explain the rest.
 

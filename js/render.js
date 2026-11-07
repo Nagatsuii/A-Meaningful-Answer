@@ -592,6 +592,134 @@ const Render = (function () {
     }
   }
 
+  // ---------- universe 2+: memories ----------
+
+  const COLOUR_WOOD = [215, 175, 120];   // the abacus frame and rods
+  const COLOUR_BEAD = [255, 205, 140];   // warm amber beads
+  const COLOUR_CARD = [235, 215, 170];   // an old cream punch card
+
+  // How visible the abacus is: it fades in after the opening, and away once its carry has played.
+  function abacusAlpha(view, state) {
+    if (!state.universesCompleted || state.sparked) return 0;
+    const a = view.abacus;
+    const appear = clamp01((view.time - CONFIG.darknessSeconds) / 2.5);
+    if (!a || a.doneAt === null) return appear;
+    return appear * (1 - clamp01((view.time - a.doneAt) / CONFIG.abacus.fadeSeconds));
+  }
+
+  // The abacus: two rods (tens above, ones below). Each tap slides one bead on the ones rod across;
+  // the tap after the last bead carries: the ones slide home and one tens bead slides over, with a gold pulse.
+  function drawAbacus(ctx, view, state, cx, cy, alpha) {
+    if (alpha <= 0.005) return;
+    const beads = CONFIG.abacus.beads;
+    const w = Math.min(240, view.width * 0.62);
+    const left = cx - w / 2, right = cx + w / 2;
+    const step = Math.min(16, (w - 24) / (beads + 3));
+    const rows = { tens: cy - 24, ones: cy + 24 };
+    const count = state.abacus || 0;
+    const slid = { ones: count > beads ? 0 : count, tens: count > beads ? 1 : 0 };
+
+    // The frame and the two rods.
+    ctx.strokeStyle = rgba(COLOUR_WOOD, 0.3 * alpha);
+    ctx.lineWidth = 1.5;
+    capsulePath(ctx, left - 14, cy - 50, right + 14, cy + 50, 10);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    for (const y of [rows.tens, rows.ones]) {
+      ctx.beginPath();
+      ctx.moveTo(left, y);
+      ctx.lineTo(right, y);
+      ctx.stroke();
+    }
+
+    // Beads glide toward their spots: a slid bead sits at the right end, the rest wait on the left.
+    if (!view.abacusBeads) view.abacusBeads = { tens: [], ones: [] };
+    const glide = 1 - Math.exp(-12 * (view.dt || 0.016));
+    for (const rod of ['tens', 'ones']) {
+      for (let i = 0; i < beads; i++) {
+        const moved = i >= beads - slid[rod];
+        const target = moved ? right - 8 - (beads - 1 - i) * step : left + 8 + i * step;
+        const list = view.abacusBeads[rod];
+        if (list[i] === undefined) list[i] = target;
+        list[i] += (target - list[i]) * glide;
+        const lit = moved ? 1 : 0.45;
+        glow(ctx, list[i], rows[rod], 13, COLOUR_BEAD, 0.35 * lit * alpha);
+        ctx.fillStyle = rgba(COLOUR_BEAD, (0.35 + 0.5 * lit) * alpha);
+        ctx.beginPath();
+        ctx.ellipse(list[i], rows[rod], step * 0.42, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // The carry: a gold pulse climbs from the ones rod to the tens rod.
+    const a = view.abacus;
+    if (a && a.carryAt !== null) {
+      const p = clamp01((view.time - a.carryAt) / 0.7);
+      if (p < 1) {
+        const x = right - 8, y = rows.ones + (rows.tens - rows.ones) * easeInOut(p);
+        glow(ctx, x, y, 22, COLOUR_CARRY, 0.9 * (1 - p * 0.5) * alpha);
+      }
+    }
+
+    // Small place-value labels, so it reads as tens and ones.
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.font = `11px ${FONT}`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = rgba(COLOUR_WOOD, 0.45 * alpha);
+    ctx.fillText('10s', left - 20, rows.tens);
+    ctx.fillText('1s', left - 20, rows.ones);
+    ctx.textAlign = 'center';
+    ctx.globalCompositeOperation = 'lighter';
+  }
+
+  // The punch card (universe 2+): a row of holes above the bits. Recording, each tap punches the next
+  // hole; playing back, the hole being read flashes gold, like the pins of a card reader.
+  function drawPunchCard(ctx, view, state) {
+    if (!state.upgrades.punchCard || view.fall) return;
+    const holes = CONFIG.upgrades.punchCard.holes;
+    const punched = (state.punch || []).length;
+    const pitch = 14;
+    const w = holes * pitch + 24, h = 30;
+    const top = Math.min(...view.stars.map(s => s.y)) - CONFIG.bitHaloRadius * view.starScale - 54;
+    const left = view.cx - w / 2;
+    const alpha = clamp01(view.time / 1.2) * view.starFade;
+
+    // The card, with its corner cut off (real punch cards had one, so you could tell which way round they went).
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.beginPath();
+    ctx.moveTo(left + 10, top);
+    ctx.lineTo(left + w, top);
+    ctx.lineTo(left + w, top + h);
+    ctx.lineTo(left, top + h);
+    ctx.lineTo(left, top + 10);
+    ctx.closePath();
+    ctx.fillStyle = rgba(COLOUR_CARD, 0.06 * alpha);
+    ctx.fill();
+    ctx.strokeStyle = rgba(COLOUR_CARD, 0.3 * alpha);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const read = view.punchRead;
+    for (let i = 0; i < holes; i++) {
+      const x = left + 12 + i * pitch + pitch / 2, y = top + h / 2;
+      if (i < punched) {
+        ctx.fillStyle = rgba([10, 8, 6], 0.9 * alpha);          // a hole: you see the dark sky through it
+        ctx.fillRect(x - 3, y - 7, 6, 14);
+        ctx.strokeStyle = rgba(COLOUR_CARD, 0.45 * alpha);
+        ctx.strokeRect(x - 3, y - 7, 6, 14);
+      } else {
+        ctx.fillStyle = rgba(COLOUR_CARD, 0.18 * alpha);        // not punched yet
+        ctx.fillRect(x - 1, y - 1, 2, 2);
+      }
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    if (read && view.time - read.at < 0.5) {
+      const x = left + 12 + read.index * pitch + pitch / 2;
+      glow(ctx, x, top + h / 2, 18, COLOUR_CARRY, 0.8 * (1 - (view.time - read.at) / 0.5) * alpha);
+    }
+  }
+
   // Draw one whole frame.
   function draw(ctx, view, state) {
     // Clear to the dark sky.
@@ -603,9 +731,16 @@ const Render = (function () {
     ctx.globalCompositeOperation = 'lighter';
 
     if (!state.sparked) {
-      // Before the first tap: only the faint glow.
+      // Before the first tap: only the faint glow. (Universe 2+: the abacus comes first, then the glow.)
       const s = view.stars[0];
-      drawHint(ctx, view, s.x, s.y, clamp01((view.time - CONFIG.darknessSeconds) / 2.5));
+      if (state.universesCompleted > 0) {
+        drawAbacus(ctx, view, state, s.x, s.y, abacusAlpha(view, state));
+        const a = view.abacus;
+        const doneAt = a && a.doneAt !== null ? a.doneAt : null;
+        if (doneAt !== null) drawHint(ctx, view, s.x, s.y, clamp01((view.time - doneAt - CONFIG.abacus.fadeSeconds * 0.5) / 2));
+      } else {
+        drawHint(ctx, view, s.x, s.y, clamp01((view.time - CONFIG.darknessSeconds) / 2.5));
+      }
     } else {
       // Threads between bits that are fully alive (a newborn's thread is drawn by drawBirth).
       const living = view.birth ? view.birth.index : view.stars.length;
@@ -616,6 +751,7 @@ const Render = (function () {
       drawByte(ctx, view, state);
       drawChoice(ctx, view);
       drawHook(ctx, view);
+      drawPunchCard(ctx, view, state);
       drawPulses(ctx, view);
 
       // Living bits. For returning players they fade in over the first second.
